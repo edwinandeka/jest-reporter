@@ -1,8 +1,8 @@
 {
-    "name": "mi-extension",
-    "displayName": "Mi Extensión",
-    "description": "Una extensión de ejemplo para VS Code",
-    "version": "0.0.1",
+    "name": "jest-reporter",
+    "displayName": "Jest Reporter",
+    "description": "run test with Jest",
+    "version": "0.0.2",
     "engines": {
         "vscode": "^1.54.0"
     },
@@ -43,12 +43,10 @@
         }
     },
     "scripts": {
-        "vscode:prepublish": "npm run compile",
-        "compile": "tsc -p ./",
-        "watch": "tsc -watch -p ./",
-        "pretest": "npm run compile",
-        "test": "node ./out/test/runTest.js"
-    },
+		"lint": "eslint .",
+		"pretest": "npm run lint",
+		"test": "node ./test/runTest.js"
+	},
     "devDependencies": {
         "@types/mocha": "^8.0.3",
         "@types/node": "^14.0.0",
@@ -57,5 +55,15 @@
     },
     "dependencies": {
         "cross-spawn": "^7.0.3"
-    }
+    },
+    "icon": "images/logo-jest-reporter.png",
+	"galleryBanner": {
+		"color": "#C80000",
+		"theme": "dark"
+	},
+	"publisher": "edwinandeka",
+	"repository": {
+		"url": "https://github.com/edwinandeka/jest-reporter.git",
+		"type": "git"
+	}
 }
