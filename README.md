@@ -69,6 +69,11 @@ Add a menu in file editor (.spec.ts), it allows run the test using Jest (.spec.t
 ## Release Notes
 
 
+### 0.0.
+
+Add images
+
+
 ### 0.0.1
 
 Initial release of ...
