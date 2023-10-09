@@ -41,8 +41,6 @@ function activate(context) {
             filePath = filePath.replace(/\\/gim, '/');
             relativePath = relativePath.replace(/\\/gim, '/');
 
-            const cmd = `./node_modules/.bin/jest  ${relativePath}`;
-
             const panel = vscode.window.createWebviewPanel(
                 'webview-jest-reporter',
                 'Jest-R / ' + fileName,
@@ -53,23 +51,22 @@ function activate(context) {
                 }
             );
 
-            const scriptPathOnDisk = vscode.Uri.file(
-                path.join(context.extensionPath, 'public', 'js', 'script.js')
-            );
-
-            const scriptUri = panel.webview.asWebviewUri(scriptPathOnDisk);
-            // panel.webview.html = getWebviewContent(panel,scriptUri, null);
-
-            panel.webview.html = getWebviewContentTerminal(
-                'Running tests...<br><br>' + cmd
-            );
-
             panel.webview.onDidReceiveMessage(
                 (message) => {
                     switch (message.command) {
                         case 'openFile':
-                            const { path, line } = message;
+                            workspacePath;
+                            let { path, line } = message;
+
+                            if (!path.includes(workspacePath)) {
+                                path = workspacePath + '/' + path;
+                            }
+
                             openFileAtPathAndLine(path, line);
+                            return;
+
+                        case 'runAgain':
+                            runTest(relativePath, panel);
                             return;
                     }
                 },
@@ -77,45 +74,7 @@ function activate(context) {
                 context.subscriptions
             );
 
-            const workspaceFolders = vscode.workspace.workspaceFolders;
-            if (workspaceFolders && workspaceFolders.length > 0) {
-                const workspacePath = workspaceFolders[0].uri.fsPath;
-                const cmd = `${workspacePath}/node_modules/.bin/jest`;
-                const args = [`${relativePath}`, `--json`];
-
-                const child = spawn(cmd, args, {
-                    cwd: workspacePath,
-                    shell: true,
-                });
-
-                child.stdout.on('data', (data) => {
-                    const str = data.toString();
-
-                    // Convertir la cadena a un objeto JSON
-                    const json = JSON.parse(str);
-
-                    panel.webview.html = getWebviewContent(
-                        panel,
-                        scriptUri,
-                        json
-                    );
-
-                    console.log(`stdout: ${data}`);
-                });
-
-                child.stderr.on('data', (data) => {
-                    // Convertir el buffer a una cadena
-                    console.log(`stderr: ${data}`);
-
-                    // console.error(`stderr: ${data}`);
-                });
-
-                child.on('close', (code) => {
-                    console.log(`child process exited with code ${code}`);
-                });
-            } else {
-                vscode.window.showErrorMessage('No workspace opened!');
-            }
+            runTest(relativePath, panel);
         }
     );
 
@@ -124,7 +83,138 @@ function activate(context) {
 
 exports.activate = activate;
 
-function getWebviewContent(panel, scriptUri, json) {
+var styles = `
+body {
+    color: #ccc;
+    font-family: monospace;
+}
+
+.test-item {
+    font-weight: bold;
+    margin-top: 16px;
+    margin-bottom: 8px;
+}
+
+.arrow {
+    transform: rotate(90deg);
+    display: inline-block;
+    font-family: cursive;
+    font-weight: bold;
+    font-size: 20px;
+}
+
+ul {
+    list-style: none;
+}
+
+p.open {
+    display: flex;
+    justify-content: flex-start;
+    gap: 16px;
+    align-items: center;
+    list-style: none;
+    padding: 0px 16px;
+    margin: 0;
+    cursor: pointer;
+    height: 22px;
+}
+
+li {
+    border: 1px solid #ccc;
+    margin: -1px;
+}
+
+.content {
+    font-family: monospace;
+    font-size: 14px;
+    overflow: auto;
+    padding-left: 16px;
+}
+
+.closed .content {
+    display: none;
+}
+
+.closed .arrow {
+    transform: rotate(-90deg);
+}
+
+li.passed .open {
+    background: #0c5f5766;
+}
+
+li.failed .open {
+    background: #940e0e66;
+}
+
+.toolbar {
+    position: absolute;
+    right: 16px;
+    top: 16px;
+    display: flex;
+    gap: 8px;
+}
+
+.toolbar-btn {
+    background: #fff2;
+    padding: 4px 8px;
+    cursor: pointer;
+    border: 1px solid #fff2;
+}
+.toolbar-btn:hover {
+    border: 1px solid #fff4;
+}
+.toolbar-btn:active {
+    background: #fff6;
+}
+
+.toolbar-btn-active {
+    background: #fff6;
+}
+
+.container-closed .closed.passed {
+    display: none;
+}
+
+span.passed {
+    font-size: 12px;
+}
+
+span.failed {
+    font-size: 12px;
+}
+`;
+
+// reemplaza los enlaces hacia los archivos
+function replaceMessage(text, relativePath) {
+    if (text.join) {
+        text = text.join('\n\n');
+    }
+
+    text = text.replace(/\\/gim, '/');
+
+    let message = text.replace(/\x1b\[[0-9;]*m/g, '');
+
+    let regex = new RegExp(relativePath + '\\s*(.+?):(\\d+)', 'gmi');
+
+    const matches = message.match(regex);
+
+    if (matches) {
+        for (let index = 0; index < matches.length; index++) {
+            const link = matches[index];
+
+            let html = `<a href="#"  onclick="openFile('${encodeURI(
+                link
+            )}')" >${link}</a>`;
+
+            message = message.replace(link, html);
+        }
+    }
+
+    return message;
+}
+
+function getWebviewContent(panel, json, relativePath) {
     let tests = json.testResults;
 
     const testsItems = tests
@@ -138,34 +228,46 @@ function getWebviewContent(panel, scriptUri, json) {
             <div>
               <ul>
                 ${(() => {
+                    let test = json.testResults[index];
                     let status = json.testResults[index].status;
                     let results = json.testResults[index].assertionResults;
+
+                    if (!results.length) {
+                        return `
+                    <li class="closed ${status}">
+                        <p class="open"> 
+                            <span class="arrow"> < </span>   
+                            <span class="${status}">${
+                            status == 'failed' ? '❌' : '✅'
+                        }</span>
+                            ${test.name}
+                        </p>
+                        <div class="content">
+                            <pre>${replaceMessage(
+                                test.message,
+                                relativePath
+                            )}</pre>
+                        </div>
+                    </li>
+            `;
+                    }
+
                     return results
                         .map((result) => {
-                            let message = result.failureMessages
-                                .join('\n\n')
-                                .replace(/\x1b\[[0-9;]*m/g, '');
-                            // at C:\sysgroup\angular\urldemo\src\app\home\home.component.spec.ts:49:26
-                            const regex = /at\s+(.+?):(\d+)/;
-                            const match = regex.exec(message);
-
-                            if (match) {
-                                let link = match[0].replace('at ', '');
-
-                                let html = `<a href="#"  onclick="openFile('${encodeURI(
-                                    link
-                                )}')" >${link}</a>`;
-
-                                message = message.replace(link, html);
-                            }
-
-                            return `<li class="closed ${result.status}">
-                        <p class="open"> <span class="arrow"> < </span>   <span class="${
-                            result.status
-                        }">${result.status == 'failed' ? '❌' : '✅'}</span>
-                            ${result.fullName}</p>
+                            return `
+                    <li class="closed ${result.status}">
+                        <p class="open"> 
+                            <span class="arrow"> < </span>   
+                            <span class="${result.status}">${
+                                result.status == 'failed' ? '❌' : '✅'
+                            }</span>
+                            ${result.fullName}
+                        </p>
                         <div class="content">
-                            <pre>${message}</pre>
+                            <pre>${replaceMessage(
+                                result.failureMessages,
+                                relativePath
+                            )}</pre>
                         </div>
                     </li>
             `;
@@ -179,85 +281,27 @@ function getWebviewContent(panel, scriptUri, json) {
         .join('');
 
     return `
-      <!DOCTYPE html>
-      <html lang="en">
-      <head>
+<!DOCTYPE html>
+<html lang="en">
+<head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-        <style>
-        
-        body {
-            background: #1b1b1b;
-            color: #ccc;
-            font-family: monospace;
-        }
-
-        .test-item  {
-            font-weight: bold;
-            margin-top: 16px;
-            margin-bottom: 8px;
-        }
-        
-        .arrow {
-            transform: rotate(90deg);
-            display: inline-block;
-            font-family: cursive;
-            font-weight: bold;
-            font-size: 20px;
-        }
-        
-        ul {
-            list-style: none;
-        }
-    
-        p.open {
-            display: flex;
-            justify-content: flex-start;
-            gap: 16px;
-            align-items: center;
-            list-style: none;
-            padding: 0px 16px;
-            margin: 0;
-            cursor: pointer;
-        }
-    
-        li {
-            border: 1px solid #ccc;
-            margin: 4px;
-        }
-       
-        .content {
-            font-family: monospace;
-            font-size: 14px;
-            overflow: auto;
-            padding-left: 16px;
-        }
-    
-        .closed .content {
-    
-            display: none;
-    
-        }
-    
-        .closed  .arrow {
-            transform: rotate(-90deg);
-        }
-    
-    
-        li.passed .open {
-            background: #0c5f57;
-        }
-    
-        li.failed  .open {
-            background: #940e0e;
-        }
-    </style>
-
+        <style>${styles}</style>
 </head>
     <body>
 
     <h1>Jest Reporter</h1>
+    <div class="toolbar">
+    
+    <div class="toolbar-btn" onclick="runAgain(this)"  >
+        Run again
+    </div>
+
+        <div class="toolbar-btn" onclick="toggleErrors(this)"  >
+            Only errors
+        </div>
+    </div>
 
     <div>
         <div>Test Suites: ${json.numPassedTestSuites} passed, ${json.numTotalTestSuites} total</div>
@@ -270,12 +314,34 @@ function getWebviewContent(panel, scriptUri, json) {
         <div>Time:        7.248 s</div>
     </div>
 
-      <div>
+      <div id="content-test" >
         ${testsItems}
       </div>
   
 
     <script>
+
+var vscode = acquireVsCodeApi();
+
+
+    function runAgain(elem) {
+
+        vscode.postMessage({
+            command: 'runAgain',
+        });
+    }
+    
+
+    
+function toggleErrors(elem) {
+
+    let container =  document.getElementById('content-test')
+
+     // Alternar la clase 'closed' en el elemento padre
+     container.classList.toggle('container-closed');
+     elem.classList.toggle('toolbar-btn-active');
+}
+
 
 function miFuncion(event) {
 
@@ -295,14 +361,13 @@ var elementos = document.getElementsByClassName('open');
 for(var i = 0; i < elementos.length; i++) {
     elementos[i].addEventListener('click', miFuncion);
 }
-const vscode = acquireVsCodeApi();
 
 function openFile(link) {
     link = decodeURI(link);
     let aux = link.split(':');
 
-    let path = aux[0] + ':' + aux[1];
-    let line = aux[2];
+    let path = aux[0];
+    let line = aux[1];
 
     vscode.postMessage({
         command: 'openFile',
@@ -319,77 +384,15 @@ function openFile(link) {
 
 function getWebviewContentTerminal(testsItems) {
     return `
-      <!DOCTYPE html>
-      <html lang="en">
-      <head>
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-        <style>
-        
-        body {
-            background: #1b1b1b;
-            color: #ccc;
-            font-family: monospace;
-        }
-        
-        .arrow {
-            transform: rotate(90deg);
-            display: inline-block;
-            font-family: monospace;
-            font-weight: bold;
-            font-size: 20px;
-        }
-        
-        ul {
-            list-style: none;
-            padding: 0;
-        }
-    
-        p.open {
-            display: flex;
-            justify-content: flex-start;
-            gap: 16px;
-            align-items: center;
-            list-style: none;
-            padding: 8px 16px;
-            margin: 0;
-            cursor: pointer;
-        }
-    
-        li {
-            border: 1px solid #ccc;
-            margin: 8px;
-        }
-       
-        .content {
-            font-family: monospace;
-            font-size: 14px;
-            overflow: auto;
-            padding-left: 16px;
-        }
-    
-        .closed .content {
-    
-            display: none;
-    
-        }
-    
-        .closed  .arrow {
-            transform: rotate(-90deg);
-        }
-    
-    
-        li.passed .open {
-            background: #0c5f57;
-        }
-    
-        li.failed  .open {
-            background: #940e0e;
-        }
-    </style>
+        <style>${styles}</style>
+    </head>
 
-</head>
     <body>
 
     <h1>Jest Reporter</h1>
@@ -414,4 +417,60 @@ function openFileAtPathAndLine(path, line) {
             editor.revealRange(new vscode.Range(position, position));
         });
     });
+}
+
+function runTest(relativePath, panel) {
+    const cmd = `./node_modules/.bin/jest  ${relativePath}`;
+    panel.webview.html = getWebviewContentTerminal(
+        'Running tests...<br><br>' + cmd
+    );
+    setTimeout(() => {
+        const workspaceFolders = vscode.workspace.workspaceFolders;
+
+        if (workspaceFolders && workspaceFolders.length > 0) {
+            const workspacePath = workspaceFolders[0].uri.fsPath;
+            const cmd = `${workspacePath}/node_modules/.bin/jest`;
+            const args = [`${relativePath}`, `--json`];
+
+            const child = spawn(cmd, args, {
+                cwd: workspacePath,
+                shell: true,
+            });
+
+            child.stdout.on('data', (data) => {
+                const str = data.toString();
+                setTimeout(() => {
+                    try {
+                        // Convertir la cadena a un objeto JSON
+                        const json = JSON.parse(str);
+                        panel.webview.html = getWebviewContent(
+                            panel,
+                            json,
+                            relativePath
+                        );
+
+                        // console.log(`stdout: ${data}`);
+                    } catch (error) {
+                        console.error(`error: `, error);
+                        console.log(`stdout catch: ${str}`);
+                    }
+                }, 100);
+            });
+
+            child.stderr.on('data', (data) => {
+                // Convertir el buffer a una cadena
+                // console.log(`stderr: ${data}`);
+            });
+
+            child.on('close', (code) => {
+                console.log(`child process exited with code ${code}`);
+            });
+
+            child.on('exit', (code) => {
+                console.log(`child process exited with code sdfsd ${code}`);
+            });
+        } else {
+            vscode.window.showErrorMessage('No workspace opened!');
+        }
+    }, 10);
 }
