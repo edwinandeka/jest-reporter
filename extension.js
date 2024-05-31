@@ -87,6 +87,7 @@ var styles = `
 body {
     color: #ccc;
     font-family: monospace;
+    padding-top: 60px;
 }
 
 .test-item {
@@ -148,13 +149,24 @@ li.failed .open {
 }
 
 .toolbar {
-    position: absolute;
-    right: 16px;
-    top: 16px;
+    position: fixed;
+    right: 0;
+    top: 0;
+    display: flex;
+    justify-content: space-around;
+    width: 100%;
+    background: #1c1c1c;
+    padding: 4px;
+    box-shadow: 0 2px 5px #cccccc36;
+    z-index: 999;
+}
+.toolbar h1 {
+    margin:0;
+}
+.toolbar div{
     display: flex;
     gap: 8px;
 }
-
 .toolbar-btn {
     background: #fff2;
     padding: 4px 8px;
@@ -280,6 +292,8 @@ function getWebviewContent(panel, json, relativePath) {
         })
         .join('');
 
+        const cmd = `./node_modules/.bin/jest  ${relativePath}`;
+
     return `
 <!DOCTYPE html>
 <html lang="en">
@@ -291,19 +305,23 @@ function getWebviewContent(panel, json, relativePath) {
 </head>
     <body>
 
-    <h1>Jest Reporter</h1>
-    <div class="toolbar">
     
-    <div class="toolbar-btn" onclick="runAgain(this)"  >
-        Run again
-    </div>
+    <div class="toolbar">
+        <h1>Jest Reporter</h1>
+        <div>
+            <div class="toolbar-btn" onclick="runAgain(this)"  >
+                Run again
+            </div>
 
-        <div class="toolbar-btn" onclick="toggleErrors(this)"  >
-            Only errors
+            <div class="toolbar-btn" onclick="toggleErrors(this)"  >
+                Only errors
+            </div>
         </div>
     </div>
 
     <div>
+    
+        <div>cmd: ${cmd}</div>
         <div>Test Suites: ${json.numPassedTestSuites} passed, ${json.numTotalTestSuites} total</div>
         <div>Tests:       ${json.numPassedTests} passed, ${json.numTotalTests} total</div>
         <br>
