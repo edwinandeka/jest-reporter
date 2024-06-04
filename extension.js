@@ -1,84 +1,88 @@
-const spawn = require('cross-spawn');
-const vscode = require('vscode');
-const path = require('path');
-const fs = require('fs');
+const spawn = require("cross-spawn");
+const vscode = require("vscode");
+const path = require("path");
+const fs = require("fs");
 
 function activate(context) {
-    let disposable = vscode.commands.registerCommand(
-        'extension.miComando',
-        function (argument) {
-            let filePath;
-            if (argument instanceof vscode.Uri) {
-                // El comando fue ejecutado desde el explorador
-                filePath = argument.fsPath;
-            } else if (argument instanceof vscode.TextEditor) {
-                // El comando fue ejecutado desde el editor
-                filePath = argument.document.uri.fsPath;
-            }
+  let disposable = vscode.commands.registerCommand(
+    "extension.miComando",
+    function (argument) {
+      let filePath;
+      if (argument instanceof vscode.Uri) {
+        // El comando fue ejecutado desde el explorador
+        filePath = argument.fsPath;
+      } else if (argument instanceof vscode.TextEditor) {
+        // El comando fue ejecutado desde el editor
+        filePath = argument.document.uri.fsPath;
+      }
 
-            const stats = fs.statSync(filePath);
+      const stats = fs.statSync(filePath);
 
-            let isFile = true;
+      let isFile = true;
 
-            if (stats.isFile()) {
-                isFile = true;
+      if (stats.isFile()) {
+        isFile = true;
 
-                if (!filePath.includes('.spec.ts')) {
-                    vscode.window.showErrorMessage('Archivo no soportado');
-                    return;
-                }
-            } else if (stats.isDirectory()) {
-                isFile = false;
-            }
-
-            let workspacePath = vscode.workspace.workspaceFolders[0].uri.fsPath;
-            let relativePath = path.relative(workspacePath, filePath);
-
-            // Obtener el nombre del archivo de la ruta
-            let fileName = path.basename(filePath);
-
-            workspacePath = workspacePath.replace(/\\/gim, '/');
-            filePath = filePath.replace(/\\/gim, '/');
-            relativePath = relativePath.replace(/\\/gim, '/');
-
-            const panel = vscode.window.createWebviewPanel(
-                'webview-jest-reporter',
-                'Jest-R / ' + fileName,
-                vscode.ViewColumn.One,
-                {
-                    enableScripts: true, // Permitir scripts en la vista web
-                    retainContextWhenHidden: true,
-                }
-            );
-
-            panel.webview.onDidReceiveMessage(
-                (message) => {
-                    switch (message.command) {
-                        case 'openFile':
-                            workspacePath;
-                            let { path, line } = message;
-
-                            if (!path.includes(workspacePath)) {
-                                path = workspacePath + '/' + path;
-                            }
-
-                            openFileAtPathAndLine(path, line);
-                            return;
-
-                        case 'runAgain':
-                            runTest(relativePath, panel);
-                            return;
-                    }
-                },
-                undefined,
-                context.subscriptions
-            );
-
-            runTest(relativePath, panel);
+        if (!filePath.includes(".spec.ts")) {
+          vscode.window.showErrorMessage("Archivo no soportado");
+          return;
         }
-    );
+      } else if (stats.isDirectory()) {
+        isFile = false;
+      }
 
-    context.subscriptions.push(disposable);
+      let workspacePath = vscode.workspace.workspaceFolders[0].uri.fsPath;
+      let relativePath = path.relative(workspacePath, filePath);
+
+      // Obtener el nombre del archivo de la ruta
+      let fileName = path.basename(filePath);
+
+      workspacePath = workspacePath.replace(/\\/gim, "/");
+      filePath = filePath.replace(/\\/gim, "/");
+      relativePath = relativePath.replace(/\\/gim, "/");
+
+      const panel = vscode.window.createWebviewPanel(
+        "webview-jest-reporter",
+        "Jest-R / " + fileName,
+        vscode.ViewColumn.One,
+        {
+          enableScripts: true, // Permitir scripts en la vista web
+          retainContextWhenHidden: true,
+        }
+      );
+
+      panel.webview.onDidReceiveMessage(
+        (message) => {
+          switch (message.command) {
+            case "openFile":
+              workspacePath;
+              let { path, line } = message;
+
+              if (!path.includes(workspacePath)) {
+                path = workspacePath + "/" + path;
+              }
+
+              openFileAtPathAndLine(path, line);
+              return;
+
+            case "runAgain":
+              runTest(relativePath, panel);
+              return;
+
+            case "runCoverage":
+              runCoverage(relativePath, panel);
+              return;
+          }
+        },
+        undefined,
+        context.subscriptions
+      );
+
+      runTest(relativePath, panel);
+    }
+  );
+
+  context.subscriptions.push(disposable);
 }
 
 exports.activate = activate;
@@ -195,106 +199,111 @@ span.passed {
 span.failed {
     font-size: 12px;
 }
+
+.hidden {
+    display: block;
+}
+
 `;
 
 // reemplaza los enlaces hacia los archivos
 function replaceMessage(text, relativePath) {
-    if (text.join) {
-        text = text.join('\n\n');
+  if (text.join) {
+    text = text.join("\n\n");
+  }
+
+  text = text.replace(/\\/gim, "/");
+
+  let message = text.replace(/\x1b\[[0-9;]*m/g, "");
+
+  let regex = new RegExp(relativePath + "\\s*(.+?):(\\d+)", "gmi");
+
+  const matches = message.match(regex);
+
+  if (matches) {
+    for (let index = 0; index < matches.length; index++) {
+      const link = matches[index];
+
+      let html = `<a href="#"  onclick="openFile('${encodeURI(
+        link
+      )}')" >${link}</a>`;
+
+      message = message.replace(link, html);
     }
+  }
 
-    text = text.replace(/\\/gim, '/');
-
-    let message = text.replace(/\x1b\[[0-9;]*m/g, '');
-
-    let regex = new RegExp(relativePath + '\\s*(.+?):(\\d+)', 'gmi');
-
-    const matches = message.match(regex);
-
-    if (matches) {
-        for (let index = 0; index < matches.length; index++) {
-            const link = matches[index];
-
-            let html = `<a href="#"  onclick="openFile('${encodeURI(
-                link
-            )}')" >${link}</a>`;
-
-            message = message.replace(link, html);
-        }
-    }
-
-    return message;
+  return message;
 }
 
 function getWebviewContent(panel, json, relativePath, message) {
-    let tests = json.testResults;
+  let tests = json.testResults;
 
-    const testsItems = tests
-        .map((test, index) => {
-            return `
+  const testsItems = tests
+    .map((test, index) => {
+      return `
             <div class="test-item ${test.status}">
-            ${test.status == 'failed' ? '❌' : '✅'}
+            ${test.status == "failed" ? "❌" : "✅"}
             ${test.name}
             </div>
     
             <div>
               <ul>
                 ${(() => {
-                    let test = json.testResults[index];
-                    let status = json.testResults[index].status;
-                    let results = json.testResults[index].assertionResults;
+                  let test = json.testResults[index];
+                  let status = json.testResults[index].status;
+                  let results = json.testResults[index].assertionResults;
 
-                    if (!results.length) {
-                        return `
+                  if (!results.length) {
+                    return `
                     <li class="closed ${status}">
                         <p class="open"> 
                             <span class="arrow"> < </span>   
                             <span class="${status}">${
-                            status == 'failed' ? '❌' : '✅'
-                        }</span>
+                      status == "failed" ? "❌" : "✅"
+                    }</span>
                             ${test.name}
                         </p>
                         <div class="content">
                             <pre>${replaceMessage(
-                                test.message,
-                                relativePath
+                              test.message,
+                              relativePath
                             )}</pre>
                         </div>
                     </li>
             `;
-                    }
+                  }
 
-                    return results
-                        .map((result) => {
-                            return `
+                  return results
+                    .map((result) => {
+                      return `
                     <li class="closed ${result.status}">
                         <p class="open"> 
                             <span class="arrow"> < </span>   
                             <span class="${result.status}">${
-                                result.status == 'failed' ? '❌' : '✅'
-                            }</span>
+                        result.status == "failed" ? "❌" : "✅"
+                      }</span>
                             ${result.fullName}
                         </p>
                         <div class="content">
                             <pre>${replaceMessage(
-                                result.failureMessages,
-                                relativePath
+                              result.failureMessages,
+                              relativePath
                             )}</pre>
                         </div>
                     </li>
             `;
-                        })
-                        .join('');
+                    })
+                    .join("");
                 })()}
               </ul>
           </div>
     `;
-        })
-        .join('');
+    })
+    .join("");
 
-        const cmd = `./node_modules/.bin/jest  ${relativePath}`;
+  const cmd = `./node_modules/.bin/jest  ${relativePath}`;
 
-    return `
+  return `
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -315,6 +324,10 @@ function getWebviewContent(panel, json, relativePath, message) {
 
             <div class="toolbar-btn" onclick="toggleErrors(this)"  >
                 Only errors
+            </div>
+
+            <div class="toolbar-btn hidden" onclick="runCoverage(this)"  >
+            Run coverage
             </div>
         </div>
     </div>
@@ -348,6 +361,15 @@ var vscode = acquireVsCodeApi();
             command: 'runAgain',
         });
     }
+
+    function runCoverage(elem) {
+
+        vscode.postMessage({
+            command: 'runCoverage',
+        });
+    }
+
+    
     
 
     
@@ -401,7 +423,7 @@ function openFile(link) {
 }
 
 function getWebviewContentTerminal(testsItems) {
-    return `
+  return `
     <!DOCTYPE html>
     <html lang="en">
     <head>
@@ -427,82 +449,145 @@ function getWebviewContentTerminal(testsItems) {
 }
 
 function openFileAtPathAndLine(path, line) {
-    const openPath = vscode.Uri.file(path);
-    vscode.workspace.openTextDocument(openPath).then((doc) => {
-        vscode.window.showTextDocument(doc).then((editor) => {
-            const position = new vscode.Position(line - 1, 0); // line is 1-based, Position is 0-based
-            editor.selection = new vscode.Selection(position, position);
-            editor.revealRange(new vscode.Range(position, position));
-        });
+  const openPath = vscode.Uri.file(path);
+  vscode.workspace.openTextDocument(openPath).then((doc) => {
+    vscode.window.showTextDocument(doc).then((editor) => {
+      const position = new vscode.Position(line - 1, 0); // line is 1-based, Position is 0-based
+      editor.selection = new vscode.Selection(position, position);
+      editor.revealRange(new vscode.Range(position, position));
     });
+  });
 }
 
 function runTest(relativePath, panel) {
-    const cmd = `./node_modules/.bin/jest  ${relativePath}`;
-    panel.webview.html = getWebviewContentTerminal(
-        'Running tests...<br><br>' + cmd
-    );
-    setTimeout(() => {
-        const workspaceFolders = vscode.workspace.workspaceFolders;
+  const cmd = `./node_modules/.bin/jest  ${relativePath}`;
+  panel.webview.html = getWebviewContentTerminal(
+    "Running tests...<br><br>" + cmd
+  );
+  setTimeout(() => {
+    const workspaceFolders = vscode.workspace.workspaceFolders;
 
-        if (workspaceFolders && workspaceFolders.length > 0) {
-            const workspacePath = workspaceFolders[0].uri.fsPath;
-            const cmd = `${workspacePath}/node_modules/.bin/jest`;
-            const args = [`${relativePath}`, `--json`];
+    if (workspaceFolders && workspaceFolders.length > 0) {
+      const workspacePath = workspaceFolders[0].uri.fsPath;
+      const cmd = `${workspacePath}/node_modules/.bin/jest`;
+      const args = [`${relativePath}`, `--json`];
 
-            const child = spawn(cmd, args, {
-                cwd: workspacePath,
-                shell: true,
-            });
+      const child = spawn(cmd, args, {
+        cwd: workspacePath,
+        shell: true,
+      });
 
-            let output = '';
+      let output = "";
 
-            child.stdout.on('data', (data) => {
-                const str = data.toString();
+      child.stdout.on("data", (data) => {
+        const str = data.toString();
 
-                output += str;
-               
-            });
+        output += str;
+      });
 
-            child.stderr.on('data', (data) => {
-                // Convertir el buffer a una cadena
-                // console.log(`stderr: ${data}`);
-            });
+      child.stderr.on("data", (data) => {
+        // Convertir el buffer a una cadena
+        // console.log(`stderr: ${data}`);
+        const str = data.toString();
 
-            child.on('close', (code) => {
-                console.log(`child process exited with code ${code}`);
+        output += str;
+      });
 
-                setTimeout(() => {
-                    try {
-                        output
-                        let index  = output.indexOf('{')
+      child.on("close", (code) => {
+        console.log(`child process exited with code ${code}`);
 
-                        const message = output.substring(0, index)
-                        const outputFinal = output.substring(index, output.length).trim()
+        setTimeout(() => {
+          try {
+            let index = output.indexOf("{");
 
-                        // Convertir la cadena a un objeto JSON
-                        // var json = eval(`eval(${outputFinal})`)
-                        const json = JSON.parse(output);
-                        panel.webview.html = getWebviewContent(
-                            panel,
-                            json,
-                            relativePath,
-                            message
-                        );
+            const message = output.substring(0, index);
+            const outputFinal = output.substring(index, output.length).trim();
 
-                        // console.log(`stdout: ${data}`);
-                    } catch (error) {
-                        console.error(`error: `, error);
-                        console.log(`stdout catch: ${output}`);
-                    }
-                }, 100);
-            });
+            // Convertir la cadena a un objeto JSON
+            var json = eval(`eval(${outputFinal})`);
+            // const json = JSON.parse(output);
+            if (json) {
+              panel.webview.html = getWebviewContent(
+                panel,
+                json,
+                relativePath,
+                message
+              );
+            } else {
+                panel.webview.html = getWebviewContentTerminal(output);
+            }
 
-            child.on('exit', (code) => {
-                console.log(`child process exited with code sdfsd ${code}`);
-            });
-        } else {
-            vscode.window.showErrorMessage('No workspace opened!');
-        }
-    }, 10);
+            // console.log(`stdout: ${data}`);
+          } catch (error) {
+            console.error(`error: `, error);
+            console.log(`stdout catch: ${output}`);
+          }
+        }, 100);
+      });
+
+      child.on("exit", (code) => {
+        console.log(`child process exited with code sdfsd ${code}`);
+        panel.webview.html = getWebviewContentTerminal(output);
+      });
+    } else {
+      vscode.window.showErrorMessage("No workspace opened!");
+    }
+  }, 10);
+}
+
+function runCoverage(relativePath, panel) {
+  const cmd = `./node_modules/.bin/jest --coverage --collectCoverageFrom[${relativePath}] --coverageReporters=text`;
+  panel.webview.html = getWebviewContentTerminal(
+    "Running tests...<br><br>" + cmd
+  );
+  setTimeout(() => {
+    const workspaceFolders = vscode.workspace.workspaceFolders;
+
+    if (workspaceFolders && workspaceFolders.length > 0) {
+      const workspacePath = workspaceFolders[0].uri.fsPath;
+      const cmd = `${workspacePath}/node_modules/.bin/jest`;
+      const args = [
+        "--coverage",
+        `${relativePath}`,
+        `--coverageReporters=text`,
+      ];
+
+      const child = spawn(cmd, args, {
+        cwd: workspacePath,
+        shell: true,
+      });
+
+      let output = "";
+
+      child.stdout.on("data", (data) => {
+        const str = data.toString();
+
+        output += str;
+      });
+
+      child.stderr.on("data", (data) => {
+        // Convertir el buffer a una cadena
+        // console.log(`stderr: ${data}`);
+        const str = data.toString();
+        
+
+        output += str;
+      });
+
+      child.on("close", (code) => {
+        console.log(`child process exited with code ${code}`);
+        
+
+        panel.webview.html = getWebviewContentTerminal(output);
+      });
+
+      child.on("exit", (code) => {
+        console.log(`child process exited with code sdfsd ${code}`);
+
+        panel.webview.html = getWebviewContentTerminal(output);
+      });
+    } else {
+      vscode.window.showErrorMessage("No workspace opened!");
+    }
+  }, 10);
 }
