@@ -435,7 +435,23 @@ function getWebviewContentTerminal(testsItems) {
 
     <body>
 
-    <h1>Jest Reporter</h1>
+     
+    <div class="toolbar">
+        <h1>Jest Reporter</h1>
+        <div>
+            <div class="toolbar-btn" onclick="runAgain(this)"  >
+                Run again
+            </div>
+
+            <div class="toolbar-btn" onclick="toggleErrors(this)"  >
+                Only errors
+            </div>
+
+            <div class="toolbar-btn hidden" onclick="runCoverage(this)"  >
+            Run coverage
+            </div>
+        </div>
+    </div>
 
       <div>
           <pre>${testsItems}</pre>
@@ -481,7 +497,7 @@ function runTest(relativePath, panel) {
 
       child.stdout.on("data", (data) => {
         const str = data.toString();
-
+        debugger
         output += str;
       });
 
@@ -489,13 +505,13 @@ function runTest(relativePath, panel) {
         // Convertir el buffer a una cadena
         // console.log(`stderr: ${data}`);
         const str = data.toString();
-
+        debugger
         output += str;
       });
 
       child.on("close", (code) => {
         console.log(`child process exited with code ${code}`);
-
+        debugger
         setTimeout(() => {
           try {
             let index = output.indexOf("{");
@@ -526,8 +542,11 @@ function runTest(relativePath, panel) {
       });
 
       child.on("exit", (code) => {
+        debugger
         console.log(`child process exited with code sdfsd ${code}`);
-        panel.webview.html = getWebviewContentTerminal(output);
+        if(code){
+            panel.webview.html = getWebviewContentTerminal(output);
+        }
       });
     } else {
       vscode.window.showErrorMessage("No workspace opened!");
