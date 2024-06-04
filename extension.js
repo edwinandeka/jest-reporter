@@ -226,7 +226,7 @@ function replaceMessage(text, relativePath) {
     return message;
 }
 
-function getWebviewContent(panel, json, relativePath) {
+function getWebviewContent(panel, json, relativePath, message) {
     let tests = json.testResults;
 
     const testsItems = tests
@@ -331,7 +331,7 @@ function getWebviewContent(panel, json, relativePath) {
         <div>Snapshots:   ${json.snapshot.total} total</div>
         <div>Time:        7.248 s</div>
     </div>
-
+        <p>${message}</p>
       <div id="content-test" >
         ${testsItems}
       </div>
@@ -455,24 +455,13 @@ function runTest(relativePath, panel) {
                 shell: true,
             });
 
+            let output = '';
+
             child.stdout.on('data', (data) => {
                 const str = data.toString();
-                setTimeout(() => {
-                    try {
-                        // Convertir la cadena a un objeto JSON
-                        const json = JSON.parse(str);
-                        panel.webview.html = getWebviewContent(
-                            panel,
-                            json,
-                            relativePath
-                        );
 
-                        // console.log(`stdout: ${data}`);
-                    } catch (error) {
-                        console.error(`error: `, error);
-                        console.log(`stdout catch: ${str}`);
-                    }
-                }, 100);
+                output += str;
+               
             });
 
             child.stderr.on('data', (data) => {
@@ -482,6 +471,31 @@ function runTest(relativePath, panel) {
 
             child.on('close', (code) => {
                 console.log(`child process exited with code ${code}`);
+
+                setTimeout(() => {
+                    try {
+                        output
+                        let index  = output.indexOf('{')
+
+                        const message = output.substring(0, index)
+                        const outputFinal = output.substring(index, output.length).trim()
+
+                        // Convertir la cadena a un objeto JSON
+                        // var json = eval(`eval(${outputFinal})`)
+                        const json = JSON.parse(output);
+                        panel.webview.html = getWebviewContent(
+                            panel,
+                            json,
+                            relativePath,
+                            message
+                        );
+
+                        // console.log(`stdout: ${data}`);
+                    } catch (error) {
+                        console.error(`error: `, error);
+                        console.log(`stdout catch: ${output}`);
+                    }
+                }, 100);
             });
 
             child.on('exit', (code) => {
