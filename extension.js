@@ -201,7 +201,7 @@ span.failed {
 }
 
 .hidden {
-    display: block;
+    display: none;
 }
 
 `;
