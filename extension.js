@@ -315,74 +315,13 @@ function getWebviewContent(panel, json, relativePath, message) {
     <body>
 
     
-    <div class="toolbar">
-        <h1>Jest Reporter</h1>
-        <div>
-            <div class="toolbar-btn" onclick="runAgain(this)"  >
-                Run again
-            </div>
 
-            <div class="toolbar-btn" onclick="toggleErrors(this)"  >
-                Only errors
-            </div>
-
-            <div class="toolbar-btn hidden" onclick="runCoverage(this)"  >
-            Run coverage
-            </div>
-        </div>
-    </div>
-
-    <div>
     
-        <div>cmd: ${cmd}</div>
-        <div>Test Suites: ${json.numPassedTestSuites} passed, ${json.numTotalTestSuites} total</div>
-        <div>Tests:       ${json.numPassedTests} passed, ${json.numTotalTests} total</div>
-        <br>
-        <div>Test Suites: ${json.numFailedTestSuites} failed, ${json.numTotalTestSuites} total</div>
-        <div>Tests:       ${json.numFailedTests} failed, ${json.numTotalTests} total</div>
-        <br>
-        <div>Snapshots:   ${json.snapshot.total} total</div>
-        <div>Time:        7.248 s</div>
-    </div>
-        <p>${message}</p>
-      <div id="content-test" >
-        ${testsItems}
-      </div>
-  
+     ${getWebviewToolbar()}
 
     <script>
 
-var vscode = acquireVsCodeApi();
-
-
-    function runAgain(elem) {
-
-        vscode.postMessage({
-            command: 'runAgain',
-        });
-    }
-
-    function runCoverage(elem) {
-
-        vscode.postMessage({
-            command: 'runCoverage',
-        });
-    }
-
-    
-    
-
-    
-function toggleErrors(elem) {
-
-    let container =  document.getElementById('content-test')
-
-     // Alternar la clase 'closed' en el elemento padre
-     container.classList.toggle('container-closed');
-     elem.classList.toggle('toolbar-btn-active');
-}
-
-
+    var vscode = acquireVsCodeApi();
 function miFuncion(event) {
 
     let elem = event.target
@@ -416,27 +355,35 @@ function openFile(link) {
     });
 }
     </script>
+
+    <div>
+    
+        <div>cmd: ${cmd}</div>
+        <div>Test Suites: ${json.numPassedTestSuites} passed, ${json.numTotalTestSuites} total</div>
+        <div>Tests:       ${json.numPassedTests} passed, ${json.numTotalTests} total</div>
+        <br>
+        <div>Test Suites: ${json.numFailedTestSuites} failed, ${json.numTotalTestSuites} total</div>
+        <div>Tests:       ${json.numFailedTests} failed, ${json.numTotalTests} total</div>
+        <br>
+        <div>Snapshots:   ${json.snapshot.total} total</div>
+        <div>Time:        7.248 s</div>
+    </div>
+        <p>${message}</p>
+      <div id="content-test" >
+        ${testsItems}
+      </div>
+  
+
+   
        
       </body>
       </html>
     `;
 }
 
-function getWebviewContentTerminal(testsItems) {
+function getWebviewToolbar() {
   return `
-    <!DOCTYPE html>
-    <html lang="en">
-    <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-        <style>${styles}</style>
-    </head>
-
-    <body>
-
-     
-    <div class="toolbar">
+      <div class="toolbar">
         <h1>Jest Reporter</h1>
         <div>
             <div class="toolbar-btn" onclick="runAgain(this)"  >
@@ -452,6 +399,53 @@ function getWebviewContentTerminal(testsItems) {
             </div>
         </div>
     </div>
+
+     <script>
+
+var vscode = acquireVsCodeApi();
+
+
+    function runAgain(elem) {
+
+        vscode.postMessage({
+            command: 'runAgain',
+        });
+    }
+
+    function runCoverage(elem) {
+
+        vscode.postMessage({
+            command: 'runCoverage',
+        });
+    }
+
+    
+function toggleErrors(elem) {
+
+    let container =  document.getElementById('content-test')
+
+     // Alternar la clase 'closed' en el elemento padre
+     container.classList.toggle('container-closed');
+     elem.classList.toggle('toolbar-btn-active');
+}
+    </script>
+    `;
+}
+
+function getWebviewContentTerminal(testsItems) {
+  return `
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+        <style>${styles}</style>
+    </head>
+
+    <body>
+     
+    ${getWebviewToolbar()}
 
       <div>
           <pre>${testsItems}</pre>
@@ -476,10 +470,11 @@ function openFileAtPathAndLine(path, line) {
 }
 
 function runTest(relativePath, panel) {
-  const cmd = `./node_modules/.bin/jest  ${relativePath}`;
+  const cmd = `./node_modules/.bin/jest ${relativePath}`;
   panel.webview.html = getWebviewContentTerminal(
     "Running tests...<br><br>" + cmd
   );
+
   setTimeout(() => {
     const workspaceFolders = vscode.workspace.workspaceFolders;
 
@@ -496,54 +491,82 @@ function runTest(relativePath, panel) {
       let output = "";
       let outputError = "";
 
+      // Capturar salida estándar
       child.stdout.on("data", (data) => {
         const str = data.toString();
         output += str;
       });
 
+      // Capturar errores estándar
       child.stderr.on("data", (data) => {
-        // Convertir el buffer a una cadena
-        // console.log(`stderr: ${data}`);
         const str = data.toString();
         outputError += str;
       });
 
+      // Proceso finalizado correctamente o con errores
       child.on("close", (code) => {
-        console.log(`child process exited with code ${code}`);
-        setTimeout(() => {
+        console.log(`runTest >> child process close event ${code}`);
+        try {
+          let index = output.indexOf("{");
+          if (index === -1) {
+            throw new Error("No se encontró un objeto JSON en la salida.");
+          }
+
+          const message = output.substring(0, index);
+          const outputFinal = output.substring(index).trim();
+
+          // Convertir la cadena a un objeto JSON
+          let json;
           try {
-            let index = output.indexOf("{");
+            json = JSON.parse(outputFinal);
+          } catch (parseError) {
+            console.error("runTest >> Error al parsear JSON:", parseError);
 
-            const message = output.substring(0, index);
-            const outputFinal = output.substring(index, output.length).trim();
-
-            // Convertir la cadena a un objeto JSON
-            var json = eval(`eval(${outputFinal})`);
-            // const json = JSON.parse(output);
-            if (json) {
-              panel.webview.html = getWebviewContent(
-                panel,
-                json,
-                relativePath,
-                message
+            if (code !== 0) {
+              // Mostrar errores si el proceso falla
+              panel.webview.html = getWebviewContentTerminal(
+                outputError || `Error code: ${code}`
               );
-            } else {
-                panel.webview.html = getWebviewContentTerminal(output);
+              return;
             }
 
-            // console.log(`stdout: ${data}`);
-          } catch (error) {
-            console.error(`error: `, error);
-            console.log(`stdout catch: ${output}`);
+            throw new Error("La salida no contiene un JSON válido.");
           }
-        }, 100);
+
+          // Mostrar resultado si el JSON es válido
+          panel.webview.html = getWebviewContent(
+            panel,
+            json,
+            relativePath,
+            message
+          );
+        } catch (error) {
+          // Manejar errores inesperados
+          console.error(`Error al procesar la salida:`, error);
+          panel.webview.html = getWebviewContentTerminal(
+            `Error al procesar la salida:<br>${error.message}<br>${
+              outputError || output
+            }`
+          );
+        }
       });
 
+      // Manejar salida explícita de procesos
       child.on("exit", (code) => {
-        console.log(`child process exited with code sdfsd ${code}`);
-        if(code){
-            panel.webview.html = getWebviewContentTerminal(outputError);
+        console.log(`runTest >> child process exit event ${code}`);
+        if (code !== 0 && !outputError) {
+          panel.webview.html = getWebviewContentTerminal(
+            `Proceso fallido con código: ${code}`
+          );
         }
+      });
+
+      // Manejar errores generales en el spawn
+      child.on("error", (spawnError) => {
+        console.error("runTest >> Error al ejecutar el comando:", spawnError);
+        panel.webview.html = getWebviewContentTerminal(
+          `Error al ejecutar el comando:<br>${spawnError.message}`
+        );
       });
     } else {
       vscode.window.showErrorMessage("No workspace opened!");
@@ -585,20 +608,18 @@ function runCoverage(relativePath, panel) {
         // Convertir el buffer a una cadena
         // console.log(`stderr: ${data}`);
         const str = data.toString();
-        
 
         output += str;
       });
 
       child.on("close", (code) => {
-        console.log(`child process exited with code ${code}`);
-        
+        console.log(`runCoverage >>  child process close event  ${code}`);
 
         panel.webview.html = getWebviewContentTerminal(output);
       });
 
       child.on("exit", (code) => {
-        console.log(`child process exited with code sdfsd ${code}`);
+        console.log(`runCoverage >> child process exit event ${code}`);
 
         panel.webview.html = getWebviewContentTerminal(output);
       });

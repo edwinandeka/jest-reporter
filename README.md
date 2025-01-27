@@ -67,7 +67,8 @@ Add a menu in file editor (.spec.ts), it allows run the test using Jest (.spec.t
 ![test2](images/test4.png)
 
 ## Release Notes
-
+### 1.2.3
+Added error handler
 
 ### 1.1.0
 
