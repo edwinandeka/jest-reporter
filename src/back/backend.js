@@ -11,14 +11,7 @@ const vscode = require("vscode");
  * @param {string} extensionPath - Ruta de la extensión.
  * @returns {string} - El contenido HTML del webview.
  */
-function getWebviewContent(
-  panel,
-  json,
-  relativePath,
-  message,
-  workspacePath,
-  extensionPath
-) {
+function getWebviewContent(panel, extensionPath) {
   const htmlPath = path.join(extensionPath, "src", "front", "index.html");
   const htmlContent = fs.readFileSync(htmlPath, "utf8");
 
@@ -29,24 +22,15 @@ function getWebviewContent(
     vscode.Uri.file(path.join(extensionPath, "src", "front", "main.css"))
   );
 
-  // Inserta las rutas del CSS y JS en el HTML.
-  const contentWithReplacements = htmlContent
+  return htmlContent
     .replace(
       '<link rel="stylesheet" href="main.css" />',
       `<link rel="stylesheet" href="${styleUri}" />`
     )
     .replace(
       '<script src="main.js"></script>',
-      `<script>JSON_RESULT = ${JSON.stringify(json)}; PAGE =  ${JSON.stringify({
-        relativePath,
-        message,
-        workspacePath,
-      })};</script><script src="${scriptUri}">JSON_RESULT = ${JSON.stringify(
-        json
-      )}</script>`
+      `<script src="${scriptUri}"></script>`
     );
-
-  return contentWithReplacements;
 }
 
 /**
@@ -54,8 +38,9 @@ function getWebviewContent(
  * @param {string} filePath - Ruta completa del archivo.
  * @param {number} line - Línea a la que se debe mover el cursor.
  */
-function openFileAtPathAndLine(filePath, line) {
-  const openPath = vscode.Uri.file(filePath);
+function openFileAtPathAndLine(filePath, line, workspacePath) {
+  filePath = filePath.replace(/\//gm, "\\");
+  const openPath = vscode.Uri.file(path.join(workspacePath, filePath));
   vscode.workspace.openTextDocument(openPath).then((doc) => {
     vscode.window.showTextDocument(doc).then((editor) => {
       const position = new vscode.Position(line - 1, 0); // Línea es 1-based, posición es 0-based

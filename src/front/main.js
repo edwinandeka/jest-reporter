@@ -1,9 +1,5 @@
 var vscode = acquireVsCodeApi();
 
-JSON_RESULT;
-
-debugger;
-
 /**
  * Maneja el evento de clic para colapsar o expandir los resultados.
  * @param {Event} event - El evento de clic.
@@ -73,6 +69,41 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 });
 
+/**
+ * Formatea un objeto JSON y aplica estilos a las claves, valores de texto y números.
+ * @param {Object} obj - El objeto que se va a formatear.
+ * @returns {string} - Una cadena de HTML con el JSON resaltado.
+ */
+function formatObjectWithStyles(texto) {
+  // Resaltar claves (en formato "clave":)
+  texto = texto.replace(/"([^"]+)":/g, '<span class="json-key">"$1"</span>:');
+
+  // Resaltar valores de cadena (en formato "valor")
+  texto = texto.replace(
+    /: "([^"]+)"/g,
+    ': <span class="json-string">"$1"</span>'
+  );
+
+  // Resaltar números
+  texto = texto.replace(/: (\d+)/g, ': <span class="json-number">$1</span>');
+
+  // Resaltar llaves `{` y `}`
+  texto = texto.replace(/\{/g, '<span class="json-curly">{</span>');
+  texto = texto.replace(/\}/g, '<span class="json-curly">}</span>');
+
+  // Resaltar signos `+` y `-` en las líneas de diferencias
+  texto = texto.replace(
+    /(\n\s*)\+ (.+)/g,
+    '$1<span class="json-plus">+ $2</span>'
+  );
+  texto = texto.replace(
+    /(\n\s*)- (.+)/g,
+    '$1<span class="json-minus">- $2</span>'
+  );
+
+  return texto;
+}
+
 // reemplaza los enlaces hacia los archivos
 function replaceMessage(text, relativePath) {
   if (text.join) {
@@ -80,6 +111,7 @@ function replaceMessage(text, relativePath) {
   }
 
   text = text.replace(/\\/gim, "/");
+  relativePath = relativePath.replace(/\\/gim, "/");
 
   let message = text.replace(/\x1b\[[0-9;]*m/g, "");
 
@@ -89,7 +121,8 @@ function replaceMessage(text, relativePath) {
 
   if (matches) {
     for (let index = 0; index < matches.length; index++) {
-      const link = matches[index];
+      let link = matches[index];
+      link = link.replace(/\\/gim, "/");
 
       let html = `<a href="#"  onclick="openFile('${encodeURI(
         link
@@ -99,12 +132,19 @@ function replaceMessage(text, relativePath) {
     }
   }
 
+  messageIndex = message.indexOf("at ");
+  message =
+    formatObjectWithStyles(message.substring(0, messageIndex)) +
+    message.substring(messageIndex);
+  message = message.replace("Error:", `<span class="test-error">Error:</span>`);
+
   return message;
 }
 
-function getJsonContent() {
-  const json = JSON_RESULT;
+function getJsonContent(json, relativePath, message) {
   let tests = json.testResults;
+
+  debugger
 
   const testsItems = tests
     .map((test, index) => {
@@ -134,7 +174,7 @@ function getJsonContent() {
                         <div class="content">
                             <pre>${replaceMessage(
                               test.message,
-                              PAGE.relativePath
+                              relativePath
                             )}</pre>
                         </div>
                     </li>
@@ -155,7 +195,7 @@ function getJsonContent() {
                         <div class="content">
                             <pre>${replaceMessage(
                               result.failureMessages,
-                              PAGE.relativePath
+                              relativePath
                             )}</pre>
                         </div>
                     </li>
@@ -169,7 +209,7 @@ function getJsonContent() {
     })
     .join("");
 
-  const cmd = `./node_modules/.bin/jest  ${PAGE.relativePath}`;
+  const cmd = `./node_modules/.bin/jest  ${relativePath}`;
 
   return `
         <div>cmd: ${cmd}</div>
@@ -182,14 +222,87 @@ function getJsonContent() {
         <div>Snapshots:   ${json.snapshot.total} total</div>
         <div>Time:        7.248 s</div>
     </div>
-        <p>${PAGE.message}</p>
       <div id="content-test" >
         ${testsItems}
       </div>
+
+      <pre>${message}</pre>
+
     `;
 }
 
-if (JSON_RESULT) {
-  const content = getJsonContent();
+// if (JSON_RESULT) {
+//   const content = getJsonContent();
+//   document.getElementById("render").innerHTML = content;
+// }
+
+/**
+ * Inicializa la interfaz con los datos recibidos.
+ * @param {Object} data - Datos enviados por el backend.
+ */
+function results(data) {
+  debugger
+  const {   message } = data;
+
+  const content = getJsonContent(data.message, message.relativePath, message);
   document.getElementById("render").innerHTML = content;
+
+  // Agregar event listeners a los resultados
+  document.querySelectorAll(".open").forEach((element) => {
+    element.addEventListener("click", toggleResult);
+  });
 }
+
+/**
+ * Inicializa la interfaz con los erroes recibidos.
+ * @param {Object} data - Datos enviados por el backend.
+ */
+function error(data) {
+  const { message } = data;
+
+  document.getElementById("render").innerHTML = `
+      <h2 style="color: red;">Error</h2>
+      
+      <pre>${message}</pre>
+  `;
+}
+
+/**
+ * Inicializa la interfaz con los datos recibidos.
+ * @param {Object} data - Datos enviados por el backend.
+ */
+function loading(data) {
+  const { message } = data;
+
+  document.getElementById("render").innerHTML = `
+    <div id="loading" style="text-align: center; margin-top: 50px">
+        <h2>Running Tests...</h2>
+        <div class="spinner"></div>
+        <p id="spinner-name">${message}</p>
+      </div>
+`;
+
+  document.getElementById("spinner-name").innerHTML = message;
+}
+
+/**
+ * Escuchar mensajes del backend.
+ */
+window.addEventListener("message", (event) => {
+  const { command, ...data } = event.data;
+
+  if (command === "error") {
+    error(data);
+  }
+
+  if (command === "results") {
+    results(data);
+  }
+
+  if (command === "loading") {
+    loading(data);
+  }
+});
+
+// Enviar mensaje inicial al backend para solicitar datos
+vscode.postMessage({ command: "requestData" });
