@@ -52,6 +52,8 @@ export class TestRunner {
   private context: vscode.ExtensionContext;
   private _fileUri: vscode.Uri;
   private panel: vscode.WebviewPanel | null = null;
+  private lastTestPath: string = '';
+  private lastTestTitle: string | undefined = undefined;
 
   /**
    * Crea una instancia de TestRunner.
@@ -116,6 +118,11 @@ export class TestRunner {
         if (workspacePath) {
           this.findAndOpenMethod(message.specPath, message.tsPath, message.testName, workspacePath);
         }
+      } else if (message.command === 'runAgain') {
+        // Ejecutar las pruebas nuevamente con los mismos parámetros
+        if (this.lastTestPath) {
+          this.runTests(this.lastTestPath, this.lastTestTitle);
+        }
       }
     });
 
@@ -156,6 +163,10 @@ export class TestRunner {
    * @param title - Título específico de prueba a ejecutar (opcional).
    */
   public async runTests(fsPath: string, title?: string): Promise<void> {
+    // Guardar los parámetros de la última ejecución para poder re-ejecutar
+    this.lastTestPath = fsPath;
+    this.lastTestTitle = title;
+
     this.controller.items.forEach((item: vscode.TestItem) => console.log(item.id));
     console.log('🚀 Ejecutando pruebas:', fsPath, title);
 

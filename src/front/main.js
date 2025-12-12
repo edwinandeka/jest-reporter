@@ -298,13 +298,17 @@ function results(data) {
 
   // Mostrar la barra de herramientas de archivo y configurar los botones
   const toolbarFile = document.getElementById("toolbar-file");
+  const runAgainBtn = document.getElementById("run-again-btn");
   const openFileBtn = document.getElementById("open-file-btn");
   const openTestBtn = document.getElementById("open-test-btn");
 
-  if (toolbarFile && openFileBtn && openTestBtn) {
+  if (toolbarFile && runAgainBtn && openFileBtn && openTestBtn) {
     toolbarFile.classList.remove("hidden");
 
     // Remover event listeners anteriores si existen (clonando los botones)
+    const newRunAgainBtn = runAgainBtn.cloneNode(true);
+    runAgainBtn.parentNode.replaceChild(newRunAgainBtn, runAgainBtn);
+
     const newOpenFileBtn = openFileBtn.cloneNode(true);
     openFileBtn.parentNode.replaceChild(newOpenFileBtn, openFileBtn);
 
@@ -312,6 +316,10 @@ function results(data) {
     openTestBtn.parentNode.replaceChild(newOpenTestBtn, openTestBtn);
 
     // Agregar event listeners a los botones
+    newRunAgainBtn.addEventListener("click", function() {
+      runTestsAgain();
+    });
+
     newOpenFileBtn.addEventListener("click", function() {
       openTsFile(message.relativePath);
     });

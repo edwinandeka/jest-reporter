@@ -55,6 +55,8 @@ class TestRunner {
      */
     constructor(controller, context) {
         this.panel = null;
+        this.lastTestPath = '';
+        this.lastTestTitle = undefined;
         this.controller = controller;
         this.context = context;
         this._fileUri = vscode.Uri.file('');
@@ -98,6 +100,12 @@ class TestRunner {
                     this.findAndOpenMethod(message.specPath, message.tsPath, message.testName, workspacePath);
                 }
             }
+            else if (message.command === 'runAgain') {
+                // Ejecutar las pruebas nuevamente con los mismos parámetros
+                if (this.lastTestPath) {
+                    this.runTests(this.lastTestPath, this.lastTestTitle);
+                }
+            }
         });
         // Verificar si el usuario ha cerrado el webview y limpiar la referencia
         panel.onDidDispose(() => {
@@ -129,6 +137,9 @@ class TestRunner {
      * @param title - Título específico de prueba a ejecutar (opcional).
      */
     async runTests(fsPath, title) {
+        // Guardar los parámetros de la última ejecución para poder re-ejecutar
+        this.lastTestPath = fsPath;
+        this.lastTestTitle = title;
         this.controller.items.forEach((item) => console.log(item.id));
         console.log('🚀 Ejecutando pruebas:', fsPath, title);
         // Obtener el testitem desde el controller

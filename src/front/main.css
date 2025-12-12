@@ -108,7 +108,7 @@ li.failed .open {
   right: 0;
   top: 38px;
   display: flex;
-  justify-content: flex-end;
+  justify-content: space-between;
   align-items: center;
   gap: 8px;
   width: 100%;
@@ -116,6 +116,10 @@ li.failed .open {
   padding: 6px 16px;
   z-index: 998;
   border-top: 1px solid #444;
+}
+
+.toolbar-file-spacer {
+  flex: 1;
 }
 
 .toolbar-file-btn {
@@ -140,6 +144,19 @@ li.failed .open {
 .toolbar-file-btn:active {
   background: #004578;
   box-shadow: none;
+}
+
+.toolbar-file-btn-run {
+  background: #16a34a;
+}
+
+.toolbar-file-btn-run:hover {
+  background: #15803d;
+  box-shadow: 0 1px 3px rgba(22, 163, 74, 0.3);
+}
+
+.toolbar-file-btn-run:active {
+  background: #14532d;
 }
 
 .container-closed .closed.passed {
