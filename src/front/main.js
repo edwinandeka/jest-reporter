@@ -219,7 +219,7 @@ function getJsonContent(json, relativePath, message) {
             ${test.status == "failed" ? "❌" : "✅"}
             ${test.name}
             </div>
-    
+
             <div>
               <ul>
                 ${(() => {
@@ -230,8 +230,8 @@ function getJsonContent(json, relativePath, message) {
                   if (!results.length) {
                     return `
                     <li class="closed ${status}">
-                        <p class="open"> 
-                            <span class="arrow"> < </span>   
+                        <p class="open">
+                            <span class="arrow"> < </span>
                             <span class="${status}">${
                       status == "failed" ? "❌" : "✅"
                     }</span>
@@ -275,7 +275,9 @@ function getJsonContent(json, relativePath, message) {
     })
     .join("");
 
-  const cmd = `./node_modules/.bin/jest  ${relativePath}`;
+  // Usar la ruta absoluta del test file (viene de test.name)
+  const testFilePath = tests[0].name.replace(/\\/g, '/');
+  const cmd = `./node_modules/.bin/jest  ${testFilePath}`;
 
   return `
       <div id="content-test" >
@@ -298,9 +300,9 @@ function getJsonContent(json, relativePath, message) {
         </div>
         <div class="footer-cmd-container">
           <div class="footer-cmd">
-            <span>cmd:</span> <a href="#" onclick="runCommandInTerminal('${cmd.replace(/'/g, "\\'")}'); return false;" class="cmd-link">${cmd}</a>
+            <span>cmd:</span> <a href="#" class="cmd-link">${cmd}</a>
           </div>
-          <button class="footer-play-btn" onclick="runCommandInTerminal('${cmd.replace(/'/g, "\\'")}'); return false;" title="Run command in terminal">▶</button>
+          <button class="footer-play-btn" title="Run command in terminal">▶</button>
         </div>
       </div>
     `;
@@ -320,6 +322,24 @@ function results(data) {
   document.querySelectorAll(".open").forEach((element) => {
     element.addEventListener("click", toggleResult);
   });
+
+  // Agregar event listener al botón de play en el footer
+  const footerPlayBtn = document.querySelector(".footer-play-btn");
+  const cmd = `./node_modules/.bin/jest  ${message.relativePath}`;
+  if (footerPlayBtn) {
+    footerPlayBtn.addEventListener("click", function() {
+      runCommandInTerminal(cmd);
+    });
+  }
+
+  // Agregar event listener al enlace del comando
+  const cmdLink = document.querySelector(".cmd-link");
+  if (cmdLink) {
+    cmdLink.addEventListener("click", function(e) {
+      e.preventDefault();
+      runCommandInTerminal(cmd);
+    });
+  }
 
   // Mostrar la barra de herramientas de archivo y configurar los botones
   const toolbarFile = document.getElementById("toolbar-file");
@@ -407,12 +427,29 @@ function loading(data) {
         </div>
         <div class="footer-cmd-container">
           <div class="footer-cmd">
-            <span>cmd:</span> <a href="#" onclick="runCommandInTerminal('${cmd.replace(/'/g, "\\'")}'); return false;" class="cmd-link">${cmd}</a>
+            <span>cmd:</span> <a href="#" class="cmd-link">${cmd}</a>
           </div>
-          <button class="footer-play-btn" onclick="runCommandInTerminal('${cmd.replace(/'/g, "\\'")}'); return false;" title="Run command in terminal">▶</button>
+          <button class="footer-play-btn" title="Run command in terminal">▶</button>
         </div>
       </div>
 `;
+
+  // Agregar event listener al botón de play en el footer
+  const footerPlayBtn = document.querySelector(".footer-play-btn");
+  if (footerPlayBtn) {
+    footerPlayBtn.addEventListener("click", function() {
+      runCommandInTerminal(cmd);
+    });
+  }
+
+  // Agregar event listener al enlace del comando
+  const cmdLink = document.querySelector(".cmd-link");
+  if (cmdLink) {
+    cmdLink.addEventListener("click", function(e) {
+      e.preventDefault();
+      runCommandInTerminal(cmd);
+    });
+  }
 
   // Mostrar la barra de herramientas de archivo y cambiar el botón Run Again a Stop
   const toolbarFile = document.getElementById("toolbar-file");

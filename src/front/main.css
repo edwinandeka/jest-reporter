@@ -246,7 +246,7 @@ pre {
   font-size: 11px;
   z-index: 997;
   box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.3);
-  align-items: center;
+  align-items: start;
   min-height: 60px;
 }
 
