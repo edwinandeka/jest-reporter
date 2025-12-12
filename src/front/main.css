@@ -269,3 +269,20 @@ pre {
   color: #e06c75;
   font-weight: bold;
 }
+
+#footer-info .running {
+  color: #61afef;
+  font-weight: bold;
+}
+
+.toolbar-file-btn-stop {
+  background: #d32f2f !important;
+}
+
+.toolbar-file-btn-stop:hover {
+  background: #b71c1c !important;
+}
+
+.toolbar-file-btn-stop:active {
+  background: #7f0000 !important;
+}

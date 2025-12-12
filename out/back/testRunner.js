@@ -57,6 +57,7 @@ class TestRunner {
         this.panel = null;
         this.lastTestPath = '';
         this.lastTestTitle = undefined;
+        this.currentJestProcess = null;
         this.controller = controller;
         this.context = context;
         this._fileUri = vscode.Uri.file('');
@@ -105,6 +106,10 @@ class TestRunner {
                 if (this.lastTestPath) {
                     this.runTests(this.lastTestPath, this.lastTestTitle);
                 }
+            }
+            else if (message.command === 'stopTests') {
+                // Detener las pruebas en ejecución
+                this.stopCurrentTests();
             }
         });
         // Verificar si el usuario ha cerrado el webview y limpiar la referencia
@@ -178,8 +183,13 @@ class TestRunner {
         if (this.panel === null) {
             this.openWebview(filename);
         }
-        // ✅ Enviar los resultados al WebView
-        this.sendToWebview('loading', filename);
+        // ✅ Enviar los resultados al WebView con el comando completo
+        const loadingData = {
+            filename: filename,
+            filePath: testFiles[0],
+            title: title
+        };
+        this.sendToWebview('loading', loadingData);
         const jestPath = this.getJestPath();
         if (!jestPath) {
             run.appendOutput('⚠️ Jest no está instalado.\n');
@@ -201,6 +211,8 @@ class TestRunner {
             cwd: vscode.workspace.workspaceFolders?.[0].uri.fsPath,
             shell: true,
         });
+        // Guardar referencia del proceso actual
+        this.currentJestProcess = jestProcess;
         let output = '';
         let outputError = '';
         jestProcess.stdout?.on('data', (data) => {
@@ -212,12 +224,12 @@ class TestRunner {
             console.error('⚠️ Jest Error:', data.toString());
         });
         jestProcess.on('close', (code) => {
+            // Limpiar referencia del proceso
+            this.currentJestProcess = null;
             // Abrir el WebView si no está abierto
             if (this.panel === null) {
                 this.openWebview(filename);
             }
-            // ✅ Enviar los resultados al WebView
-            this.sendToWebview('loading', filename);
             if (code !== 0) {
                 run.appendOutput('❌ Error al ejecutar Jest:\n' + outputError + '\n');
                 testItems.forEach((test) => run.failed(test, new vscode.TestMessage('Error:\n' + outputError), Date.now()));
@@ -536,6 +548,21 @@ Contenido recibido: ${jsonString.substring(0, 200)}...`;
         }
         console.log('🔎 Patrones de búsqueda:', patterns);
         return patterns;
+    }
+    /**
+     * Detiene el proceso Jest actualmente en ejecución.
+     */
+    stopCurrentTests() {
+        if (this.currentJestProcess) {
+            console.log('⏹️ Deteniendo pruebas...');
+            this.currentJestProcess.kill('SIGTERM');
+            this.currentJestProcess = null;
+            this.sendToWebview('error', 'Tests stopped by user');
+            vscode.window.showInformationMessage('Tests stopped');
+        }
+        else {
+            vscode.window.showWarningMessage('No tests are currently running');
+        }
     }
 }
 exports.TestRunner = TestRunner;

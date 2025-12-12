@@ -90,6 +90,13 @@ function runCoverage() {
 }
 
 /**
+ * Envía un mensaje al backend para detener las pruebas en ejecución.
+ */
+function stopTests() {
+  vscode.postMessage({ command: "stopTests" });
+}
+
+/**
  * Alterna la visibilidad de los resultados para mostrar solo los errores.
  * @param {Element} button - Botón que activa esta funcionalidad.
  */
@@ -309,6 +316,10 @@ function results(data) {
   if (toolbarFile && runAgainBtn && openFileBtn && openTestBtn) {
     toolbarFile.classList.remove("hidden");
 
+    // Restaurar el botón Run Again (por si estaba en modo Stop)
+    runAgainBtn.innerHTML = "▶ Run Again";
+    runAgainBtn.classList.remove("toolbar-file-btn-stop");
+
     // Remover event listeners anteriores si existen (clonando los botones)
     const newRunAgainBtn = runAgainBtn.cloneNode(true);
     runAgainBtn.parentNode.replaceChild(newRunAgainBtn, runAgainBtn);
@@ -355,15 +366,49 @@ function error(data) {
 function loading(data) {
   const { message } = data;
 
+  // Construir el comando Jest completo
+  let cmd = `./node_modules/.bin/jest`;
+  let displayName = message;
+
+  if (typeof message === 'object') {
+    displayName = message.filename;
+    cmd = `./node_modules/.bin/jest ${message.filePath}`;
+    if (message.title) {
+      cmd += ` -t "${message.title}"`;
+    }
+  }
+
   document.getElementById("render").innerHTML = `
     <div id="loading" style="text-align: center; margin-top: 50px">
         <h2>Running Tests...</h2>
         <div class="spinner"></div>
-        <p id="spinner-name">${message}</p>
+        <p id="spinner-name">${displayName}</p>
+      </div>
+
+      <div id="footer-info">
+        <div class="footer-section">
+          <div class="footer-cmd">cmd: ${cmd}</div>
+        </div>
+        <div class="footer-section">
+          <div>Status: <span class="running">In Progress...</span></div>
+        </div>
       </div>
 `;
 
-  document.getElementById("spinner-name").innerHTML = message;
+  // Mostrar la barra de herramientas de archivo y cambiar el botón Run Again a Stop
+  const toolbarFile = document.getElementById("toolbar-file");
+  const runAgainBtn = document.getElementById("run-again-btn");
+
+  if (toolbarFile && runAgainBtn) {
+    toolbarFile.classList.remove("hidden");
+
+    // Cambiar el botón a modo "Stop"
+    runAgainBtn.innerHTML = "⬛ Stop";
+    runAgainBtn.classList.add("toolbar-file-btn-stop");
+    runAgainBtn.onclick = function() {
+      stopTests();
+    };
+  }
 }
 
 /**

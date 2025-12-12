@@ -54,6 +54,7 @@ export class TestRunner {
   private panel: vscode.WebviewPanel | null = null;
   private lastTestPath: string = '';
   private lastTestTitle: string | undefined = undefined;
+  private currentJestProcess: ChildProcess | null = null;
 
   /**
    * Crea una instancia de TestRunner.
@@ -123,6 +124,9 @@ export class TestRunner {
         if (this.lastTestPath) {
           this.runTests(this.lastTestPath, this.lastTestTitle);
         }
+      } else if (message.command === 'stopTests') {
+        // Detener las pruebas en ejecución
+        this.stopCurrentTests();
       }
     });
 
@@ -216,8 +220,13 @@ export class TestRunner {
       this.openWebview(filename);
     }
 
-    // ✅ Enviar los resultados al WebView
-    this.sendToWebview('loading', filename);
+    // ✅ Enviar los resultados al WebView con el comando completo
+    const loadingData = {
+      filename: filename,
+      filePath: testFiles[0],
+      title: title
+    };
+    this.sendToWebview('loading', loadingData);
 
     const jestPath: string | null = this.getJestPath();
     if (!jestPath) {
@@ -245,6 +254,9 @@ export class TestRunner {
       shell: true,
     });
 
+    // Guardar referencia del proceso actual
+    this.currentJestProcess = jestProcess;
+
     let output: string = '';
     let outputError: string = '';
 
@@ -259,12 +271,13 @@ export class TestRunner {
     });
 
     jestProcess.on('close', (code: number | null) => {
+      // Limpiar referencia del proceso
+      this.currentJestProcess = null;
+
       // Abrir el WebView si no está abierto
       if (this.panel === null) {
         this.openWebview(filename);
       }
-      // ✅ Enviar los resultados al WebView
-      this.sendToWebview('loading', filename);
 
       if (code !== 0) {
         run.appendOutput('❌ Error al ejecutar Jest:\n' + outputError + '\n');
@@ -649,5 +662,20 @@ Contenido recibido: ${jsonString.substring(0, 200)}...`;
 
     console.log('🔎 Patrones de búsqueda:', patterns);
     return patterns;
+  }
+
+  /**
+   * Detiene el proceso Jest actualmente en ejecución.
+   */
+  private stopCurrentTests(): void {
+    if (this.currentJestProcess) {
+      console.log('⏹️ Deteniendo pruebas...');
+      this.currentJestProcess.kill('SIGTERM');
+      this.currentJestProcess = null;
+      this.sendToWebview('error', 'Tests stopped by user');
+      vscode.window.showInformationMessage('Tests stopped');
+    } else {
+      vscode.window.showWarningMessage('No tests are currently running');
+    }
   }
 }
