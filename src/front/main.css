@@ -260,6 +260,17 @@ pre {
   font-weight: bold;
 }
 
+.cmd-link {
+  color: #61afef;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.cmd-link:hover {
+  color: #89c0f5;
+  text-decoration: underline;
+}
+
 #footer-info .success {
   color: #98c379;
   font-weight: bold;

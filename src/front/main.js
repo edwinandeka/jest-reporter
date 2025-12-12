@@ -97,6 +97,15 @@ function stopTests() {
 }
 
 /**
+ * Envía un mensaje al backend para ejecutar un comando en la terminal.
+ * @param {string} command - El comando a ejecutar.
+ */
+function runCommandInTerminal(command) {
+  console.log('🔧 Ejecutando comando en terminal:', command);
+  vscode.postMessage({ command: "runInTerminal", terminalCommand: command });
+}
+
+/**
  * Alterna la visibilidad de los resultados para mostrar solo los errores.
  * @param {Element} button - Botón que activa esta funcionalidad.
  */
@@ -275,7 +284,7 @@ function getJsonContent(json, relativePath, message) {
 
       <div id="footer-info">
         <div class="footer-section">
-          <div class="footer-cmd">cmd: ${cmd}</div>
+          <div class="footer-cmd">cmd: <a href="#" onclick="runCommandInTerminal('${cmd.replace(/'/g, "\\'")}'); return false;" class="cmd-link">${cmd}</a></div>
         </div>
         <div class="footer-section">
           <div>Test Suites: <span class="success">${json.numPassedTestSuites} passed</span>, ${json.numTotalTestSuites} total</div>
@@ -387,7 +396,7 @@ function loading(data) {
 
       <div id="footer-info">
         <div class="footer-section">
-          <div class="footer-cmd">cmd: ${cmd}</div>
+          <div class="footer-cmd">cmd: <a href="#" onclick="runCommandInTerminal('${cmd.replace(/'/g, "\\'")}'); return false;" class="cmd-link">${cmd}</a></div>
         </div>
         <div class="footer-section">
           <div>Status: <span class="running">In Progress...</span></div>

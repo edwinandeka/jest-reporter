@@ -111,6 +111,10 @@ class TestRunner {
                 // Detener las pruebas en ejecución
                 this.stopCurrentTests();
             }
+            else if (message.command === 'runInTerminal') {
+                // Ejecutar comando en la terminal
+                this.runCommandInTerminal(message.terminalCommand);
+            }
         });
         // Verificar si el usuario ha cerrado el webview y limpiar la referencia
         panel.onDidDispose(() => {
@@ -563,6 +567,22 @@ Contenido recibido: ${jsonString.substring(0, 200)}...`;
         else {
             vscode.window.showWarningMessage('No tests are currently running');
         }
+    }
+    /**
+     * Ejecuta un comando en la terminal integrada de VS Code.
+     * @param command - El comando a ejecutar.
+     */
+    runCommandInTerminal(command) {
+        console.log('🔧 Ejecutando comando en terminal:', command);
+        // Crear o reutilizar una terminal
+        const terminals = vscode.window.terminals;
+        let terminal = terminals.find((t) => t.name === 'Jest Reporter');
+        if (!terminal) {
+            terminal = vscode.window.createTerminal('Jest Reporter');
+        }
+        // Mostrar la terminal y ejecutar el comando
+        terminal.show();
+        terminal.sendText(command);
     }
 }
 exports.TestRunner = TestRunner;
