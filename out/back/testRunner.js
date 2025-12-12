@@ -318,6 +318,8 @@ Contenido recibido: ${jsonString.substring(0, 200)}...`;
             // Combinar stderr con los mensajes de error de cada test para mostrar el stack trace completo
             // Jest pone información valiosa en stderr que no está en el JSON
             results.outputError = outputError;
+            // Guardar el output completo (incluye console.log y otros mensajes)
+            results.fullOutput = output;
             // Mejorar los mensajes de error eliminando duplicados y organizando la información
             if (results.testResults) {
                 results.testResults.forEach((testResult) => {

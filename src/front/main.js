@@ -284,10 +284,37 @@ function getJsonContent(json, relativePath, message) {
   const testFilePath = tests[0].name;
   const cmd = `./node_modules/.bin/jest "${testFilePath}"`;
 
+  // Preparar el output completo para mostrar (console.log, etc.)
+  let fullOutputSection = '';
+  if (json.fullOutput) {
+    // Eliminar colores ANSI y el JSON al final
+    let cleanOutput = json.fullOutput.replace(/\x1b\[[0-9;]*m/g, '');
+
+    // Encontrar donde empieza el JSON y quitarlo
+    const jsonStart = cleanOutput.indexOf('{');
+    if (jsonStart > 0) {
+      cleanOutput = cleanOutput.substring(0, jsonStart).trim();
+    }
+
+    // Solo mostrar si hay contenido útil (no solo espacios en blanco)
+    if (cleanOutput.trim().length > 0) {
+      fullOutputSection = `
+        <div class="output-section">
+          <div class="output-header">
+            <span class="output-title">📋 Console Output</span>
+          </div>
+          <pre class="output-content">${cleanOutput}</pre>
+        </div>
+      `;
+    }
+  }
+
   return `
       <div id="content-test" >
         ${testsItems}
       </div>
+
+      ${fullOutputSection}
 
       <div id="footer-info">
         <div class="footer-results">
