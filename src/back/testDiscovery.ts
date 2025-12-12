@@ -1,32 +1,40 @@
-const vscode = require("vscode");
-const fs = require("fs");
-const path = require("path");
+import * as vscode from 'vscode';
+import * as fs from 'fs';
+import * as path from 'path';
+
+/**
+ * Bloque describe encontrado en el archivo.
+ */
+interface DescribeBlock {
+  name: string;
+  line: number;
+  testCases: Array<{
+    name: string;
+    line: number;
+  }>;
+}
 
 /**
  * Descubre y registra las pruebas de un archivo .spec.ts en el controlador.
  * Parsea los bloques describe() e it() y crea una jerarquía de TestItems.
- * @param {vscode.TestController} controller - El controlador de pruebas.
- * @param {string} filePath - Ruta del archivo de prueba a analizar.
+ * @param controller - El controlador de pruebas.
+ * @param filePath - Ruta del archivo de prueba a analizar.
  */
-function discoverTests(controller, filePath) {
-  const fileUri = vscode.Uri.file(filePath);
+export function discoverTests(controller: vscode.TestController, filePath: string): void {
+  const fileUri: vscode.Uri = vscode.Uri.file(filePath);
 
   // Leer las líneas del archivo
-  const lines = fs.readFileSync(filePath, "utf8").split("\n");
+  const lines: string[] = fs.readFileSync(filePath, 'utf8').split('\n');
 
   // Crear un nodo principal para el archivo
-  const fileTestItem = controller.createTestItem(
-    filePath,
-    path.basename(filePath),
-    fileUri
-  );
+  const fileTestItem: vscode.TestItem = controller.createTestItem(filePath, path.basename(filePath), fileUri);
   controller.items.add(fileTestItem);
 
   // Analizar los bloques describe y it
-  const tests = parseTestFile(lines);
+  const tests: DescribeBlock[] = parseTestFile(lines);
 
   for (const describeBlock of tests) {
-    const describeTestItem = controller.createTestItem(
+    const describeTestItem: vscode.TestItem = controller.createTestItem(
       `${filePath}##${describeBlock.name}`,
       describeBlock.name,
       fileUri
@@ -42,7 +50,7 @@ function discoverTests(controller, filePath) {
     fileTestItem.children.add(describeTestItem);
 
     for (const testCase of describeBlock.testCases) {
-      const testItem = controller.createTestItem(
+      const testItem: vscode.TestItem = controller.createTestItem(
         `${filePath}##${testCase.name}`,
         testCase.name,
         fileUri
@@ -60,18 +68,18 @@ function discoverTests(controller, filePath) {
 
 /**
  * Parsea las líneas de un archivo de prueba para extraer bloques describe() e it().
- * @param {string[]} lines - Array de líneas del archivo.
- * @returns {Array<{name: string, line: number, testCases: Array}>} Array de bloques describe encontrados.
+ * @param lines - Array de líneas del archivo.
+ * @returns Array de bloques describe encontrados.
  */
-function parseTestFile(lines) {
-  const describeRegex = /describe\(["'`](.*?)["'`]/;
-  const itRegex = /it\(["'`](.*?)["'`]/;
+function parseTestFile(lines: string[]): DescribeBlock[] {
+  const describeRegex: RegExp = /describe\(["'`](.*?)["'`]/;
+  const itRegex: RegExp = /it\(["'`](.*?)["'`]/;
 
-  const describeBlocks = [];
-  let currentDescribe = null;
+  const describeBlocks: DescribeBlock[] = [];
+  let currentDescribe: DescribeBlock | null = null;
 
-  lines.forEach((line, index) => {
-    const describeMatch = line.match(describeRegex);
+  lines.forEach((line: string, index: number) => {
+    const describeMatch: RegExpMatchArray | null = line.match(describeRegex);
     if (describeMatch) {
       if (currentDescribe) {
         describeBlocks.push(currentDescribe);
@@ -85,7 +93,7 @@ function parseTestFile(lines) {
       return;
     }
 
-    const itMatch = line.match(itRegex);
+    const itMatch: RegExpMatchArray | null = line.match(itRegex);
     if (itMatch && currentDescribe) {
       currentDescribe.testCases.push({
         name: itMatch[1],
@@ -100,7 +108,3 @@ function parseTestFile(lines) {
 
   return describeBlocks;
 }
-
-module.exports = {
-  discoverTests,
-};

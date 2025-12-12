@@ -1,26 +1,25 @@
 {
   "name": "jest-reporter",
-    "displayName": "Jest Reporter",
-    "description": "Run tests with Jest and view results interactively in a webview.",
-    "version": "2.0.4",
+  "displayName": "Jest Reporter",
+  "description": "Run tests with Jest and view results interactively in a webview.",
+  "version": "2.0.4",
   "engines": {
-    "vscode": "^1.54.0"
+    "vscode": "^1.75.0"
   },
   "categories": [
     "Testing"
   ],
   "activationEvents": [
-    "onCommand:extension.runJestTest",
-    "onView:jestTestController"
+    "onStartupFinished"
   ],
-  "main": "./src/back/extension.js",
+  "main": "./out/back/extension.js",
   "contributes": {
     "configuration": {
       "properties": {
         "jestTestExplorer.autoOpen": {
           "type": "boolean",
           "default": true,
-          "description": "Automatically open the test explorer when starting the project."
+          "description": "Automatically open the VS Code Testing Panel when Jest test files (.spec.ts) are detected in the workspace."
         }
       }
     },
@@ -62,16 +61,22 @@
     }
   },
   "scripts": {
-    "lint": "eslint .",
-    "pretest": "npm run lint",
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "lint": "eslint src --ext ts",
+    "pretest": "npm run compile && npm run lint",
     "test": "jest"
   },
   "devDependencies": {
     "@types/jest": "^29.0.0",
     "@types/node": "^18.0.0",
-    "typescript": "^5.0.0",
+    "@types/vscode": "^1.107.0",
+    "@typescript-eslint/eslint-plugin": "^6.21.0",
+    "@typescript-eslint/parser": "^6.21.0",
     "eslint": "^8.50.0",
     "jest": "^29.0.0",
+    "typescript": "^5.0.0",
     "vscode-test": "^1.4.0"
   },
   "icon": "images/logo-jest-reporter.png",
