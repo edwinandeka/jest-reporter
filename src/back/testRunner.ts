@@ -240,7 +240,12 @@ export class TestRunner {
       return;
     }
 
-    const args: string[] = ['--json'];
+    const args: string[] = [
+      '--json',
+      '--verbose',           // Muestra más detalles de cada test
+      '--testLocationInResults'  // Incluye la ubicación de cada test
+    ];
+
     if (testFiles.length > 0) {
       args.push(...testFiles);
     }
@@ -379,7 +384,28 @@ Contenido recibido: ${jsonString.substring(0, 200)}...`;
       // Normalizar la ruta con forward slashes para Jest (funciona en todos los OS)
       const relativePath: string = results.testResults[0].name.replace(/\\/g, '/');
       results.relativePath = relativePath;
+
+      // Combinar stderr con los mensajes de error de cada test para mostrar el stack trace completo
+      // Jest pone información valiosa en stderr que no está en el JSON
       results.outputError = outputError;
+
+      // Agregar el output error al principio de los failureMessages si hay errores
+      if (outputError && results.testResults) {
+        results.testResults.forEach((testResult: JestTestResult) => {
+          if (testResult.status === 'failed' && testResult.assertionResults) {
+            testResult.assertionResults.forEach((assertion: JestAssertionResult) => {
+              if (assertion.status === 'failed' && assertion.failureMessages) {
+                // Añadir información del stderr al principio si no está ya incluida
+                const firstMessage = assertion.failureMessages[0] || '';
+                if (outputError && !firstMessage.includes(outputError.substring(0, 50))) {
+                  // Solo agregar si no está duplicado
+                  assertion.failureMessages.unshift(outputError);
+                }
+              }
+            });
+          }
+        });
+      }
 
       // ✅ Enviar los resultados al WebView
       this.sendToWebview('results', results);
