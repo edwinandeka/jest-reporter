@@ -376,7 +376,8 @@ Contenido recibido: ${jsonString.substring(0, 200)}...`;
         throw new Error(errorMsg);
       }
 
-      const relativePath: string = results.testResults[0].name;
+      // Normalizar la ruta con forward slashes para Jest (funciona en todos los OS)
+      const relativePath: string = results.testResults[0].name.replace(/\\/g, '/');
       results.relativePath = relativePath;
       results.outputError = outputError;
 

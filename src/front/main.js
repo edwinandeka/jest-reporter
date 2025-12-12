@@ -275,9 +275,9 @@ function getJsonContent(json, relativePath, message) {
     })
     .join("");
 
-  // Usar la ruta absoluta del test file (viene de test.name)
-  const testFilePath = tests[0].name.replace(/\\/g, '/');
-  const cmd = `./node_modules/.bin/jest  ${testFilePath}`;
+  // Usar la ruta absoluta del test file (viene de test.name, ya normalizada por Jest)
+  const testFilePath = tests[0].name;
+  const cmd = `./node_modules/.bin/jest "${testFilePath}"`;
 
   return `
       <div id="content-test" >
@@ -325,7 +325,8 @@ function results(data) {
 
   // Agregar event listener al botón de play en el footer
   const footerPlayBtn = document.querySelector(".footer-play-btn");
-  const cmd = `./node_modules/.bin/jest  ${message.relativePath}`;
+  // La ruta ya viene normalizada desde el backend
+  const cmd = `./node_modules/.bin/jest "${message.relativePath}"`;
   if (footerPlayBtn) {
     footerPlayBtn.addEventListener("click", function() {
       runCommandInTerminal(cmd);
@@ -406,7 +407,8 @@ function loading(data) {
 
   if (typeof message === 'object') {
     displayName = message.filename;
-    cmd = `./node_modules/.bin/jest ${message.filePath}`;
+    // La ruta ya viene normalizada desde el backend (línea 198 de testRunner.ts)
+    cmd = `./node_modules/.bin/jest "${message.filePath}"`;
     if (message.title) {
       cmd += ` -t "${message.title}"`;
     }

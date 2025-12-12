@@ -308,7 +308,8 @@ Contenido recibido: ${jsonString.substring(0, 200)}...`;
                 this.sendToWebview('error', errorMsg);
                 throw new Error(errorMsg);
             }
-            const relativePath = results.testResults[0].name;
+            // Normalizar la ruta con forward slashes para Jest (funciona en todos los OS)
+            const relativePath = results.testResults[0].name.replace(/\\/g, '/');
             results.relativePath = relativePath;
             results.outputError = outputError;
             // ✅ Enviar los resultados al WebView
