@@ -111,6 +111,11 @@ export class TestRunner {
           const filePath: vscode.Uri = vscode.Uri.file(message.path);
           vscode.window.showTextDocument(filePath);
         }
+      } else if (message.command === 'goToMethod') {
+        const workspacePath: string | undefined = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+        if (workspacePath) {
+          this.findAndOpenMethod(message.specPath, message.tsPath, message.testName, workspacePath);
+        }
       }
     });
 
@@ -427,5 +432,104 @@ Contenido recibido: ${jsonString.substring(0, 200)}...`;
         message,
       });
     }
+  }
+
+  /**
+   * Busca y abre un método en el archivo TypeScript basándose en el nombre de la prueba.
+   * @param specPath - Ruta del archivo .spec.ts
+   * @param tsPath - Ruta del archivo .ts correspondiente
+   * @param testName - Nombre de la prueba (ej: "should create" o "HomeComponent should create")
+   * @param workspacePath - Ruta del workspace
+   */
+  private findAndOpenMethod(specPath: string, tsPath: string, testName: string, workspacePath: string): void {
+    const { openFileAtPathAndLine } = require('./backend');
+
+    // Normalizar la ruta del archivo .ts
+    tsPath = tsPath.replace(/\//gm, '\\');
+    const isAbsolute: boolean = path.isAbsolute(tsPath);
+    const finalTsPath: string = isAbsolute ? tsPath : path.join(workspacePath, tsPath);
+
+    console.log('🔍 Buscando método en:', finalTsPath);
+    console.log('📝 Nombre de la prueba:', testName);
+
+    // Verificar si el archivo existe
+    if (!fs.existsSync(finalTsPath)) {
+      vscode.window.showWarningMessage(`No se encontró el archivo: ${finalTsPath}`);
+      return;
+    }
+
+    // Leer el contenido del archivo TypeScript
+    const content: string = fs.readFileSync(finalTsPath, 'utf8');
+    const lines: string[] = content.split('\n');
+
+    // Extraer posibles nombres de métodos del nombre de la prueba
+    // Ej: "should create" -> buscar constructor, ngOnInit
+    // Ej: "should calculate total" -> buscar "calculateTotal"
+    const methodPatterns: string[] = this.extractMethodPatterns(testName);
+
+    // Buscar el método en el archivo
+    let foundLine: number = 0;
+
+    for (let i: number = 0; i < lines.length; i++) {
+      const line: string = lines[i];
+
+      // Buscar coincidencias con los patrones de método
+      for (const pattern of methodPatterns) {
+        // Buscar métodos: method() { o method(): type {
+        const methodRegex: RegExp = new RegExp(`\\b${pattern}\\s*\\([^)]*\\)\\s*(?::\\s*[^{]+)?\\s*\\{`, 'i');
+        if (methodRegex.test(line)) {
+          foundLine = i + 1;
+          console.log(`✅ Encontrado método en línea ${foundLine}: ${line.trim()}`);
+          break;
+        }
+      }
+
+      if (foundLine > 0) break;
+    }
+
+    // Si no se encontró un método específico, abrir el archivo en la línea 1
+    if (foundLine === 0) {
+      foundLine = 1;
+      console.log('⚠️ No se encontró un método específico, abriendo archivo en línea 1');
+      vscode.window.showInformationMessage(`Abriendo ${path.basename(finalTsPath)} (no se encontró método específico)`);
+    }
+
+    // Abrir el archivo en la línea encontrada
+    openFileAtPathAndLine(finalTsPath, foundLine, workspacePath);
+  }
+
+  /**
+   * Extrae posibles patrones de nombre de método desde el nombre de una prueba.
+   * @param testName - Nombre de la prueba
+   * @returns Array de posibles nombres de método
+   */
+  private extractMethodPatterns(testName: string): string[] {
+    const patterns: string[] = [];
+
+    // Remover prefijos comunes de pruebas
+    let cleanName: string = testName
+      .replace(/^(should|must|can|will|does)\s+/i, '')
+      .replace(/\s+(correctly|properly|successfully)$/i, '');
+
+    // Si contiene "create", buscar constructor y ngOnInit
+    if (/\bcreate\b/i.test(testName)) {
+      patterns.push('constructor', 'ngOnInit');
+    }
+
+    // Convertir palabras separadas por espacios a camelCase
+    // Ej: "calculate total" -> "calculateTotal"
+    const words: string[] = cleanName.split(/\s+/);
+    if (words.length > 1) {
+      const camelCase: string = words[0].toLowerCase() + words.slice(1).map((w: string) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join('');
+      patterns.push(camelCase);
+    }
+
+    // Añadir la palabra principal (primera palabra significativa)
+    if (words.length > 0 && words[0].length > 2) {
+      patterns.push(words[0].toLowerCase());
+    }
+
+    console.log('🔎 Patrones de búsqueda:', patterns);
+    return patterns;
   }
 }

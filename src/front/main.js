@@ -45,6 +45,25 @@ function openFile(link) {
 }
 
 /**
+ * Navega al método en el archivo TypeScript relacionado con la prueba.
+ * @param {string} specFilePath - Ruta del archivo .spec.ts
+ * @param {string} testName - Nombre de la prueba (ej: "should create")
+ */
+function goToMethod(specFilePath, testName) {
+  // Convertir la ruta del archivo .spec.ts al archivo .ts correspondiente
+  let tsFilePath = specFilePath.replace(/\.spec\.ts$/, '.ts');
+
+  console.log('🔍 Buscando método para:', testName, 'en archivo:', tsFilePath);
+
+  vscode.postMessage({
+    command: "goToMethod",
+    specPath: specFilePath,
+    tsPath: tsFilePath,
+    testName: testName,
+  });
+}
+
+/**
  * Envía un mensaje al backend para ejecutar las pruebas nuevamente.
  */
 function runTestsAgain() {
@@ -204,14 +223,19 @@ function getJsonContent(json, relativePath, message) {
                     .map((result) => {
                       return `
                     <li class="closed ${result.status}">
-                        <p class="open"> 
-                            <span class="arrow"> < </span>   
+                        <p class="open">
+                            <span class="arrow"> < </span>
                             <span class="${result.status}">${
                         result.status == "failed" ? "❌" : "✅"
                       }</span>
                             ${result.fullName}
                         </p>
                         <div class="content">
+                            <div class="content-header">
+                                <button class="goto-method-btn" onclick="goToMethod('${test.name}', '${result.fullName}')" title="Go to method in TypeScript file">
+                                  📍 Go to method
+                                </button>
+                            </div>
                             <pre>${replaceMessage(
                               result.failureMessages,
                               relativePath
