@@ -3,13 +3,11 @@ const path = require("path");
 const vscode = require("vscode");
 
 /**
- * Genera el contenido del webview cargando los archivos HTML, CSS y JS externos.
+ * Genera el contenido HTML del webview cargando archivos externos.
+ * Convierte las rutas de archivos CSS y JS a URIs seguros del webview.
  * @param {vscode.WebviewPanel} panel - El panel del webview.
- * @param {Object} json - Resultados de los tests.
- * @param {string} relativePath - Ruta relativa del archivo de test.
- * @param {string} message - Mensaje opcional para mostrar.
- * @param {string} extensionPath - Ruta de la extensión.
- * @returns {string} - El contenido HTML del webview.
+ * @param {string} extensionPath - Ruta absoluta de la extensión.
+ * @returns {string} Contenido HTML completo del webview.
  */
 function getWebviewContent(panel, extensionPath) {
   const htmlPath = path.join(extensionPath, "src", "front", "index.html");
@@ -34,9 +32,11 @@ function getWebviewContent(panel, extensionPath) {
 }
 
 /**
- * Abre un archivo en la ruta y línea especificada.
- * @param {string} filePath - Ruta completa del archivo.
- * @param {number} line - Línea a la que se debe mover el cursor.
+ * Abre un archivo en el editor de VS Code en una línea específica.
+ * Normaliza las rutas de Windows y posiciona el cursor en la línea indicada.
+ * @param {string} filePath - Ruta relativa o completa del archivo.
+ * @param {number} line - Número de línea (base 1) donde posicionar el cursor.
+ * @param {string} workspacePath - Ruta del workspace para resolver rutas relativas.
  */
 function openFileAtPathAndLine(filePath, line, workspacePath) {
   filePath = filePath.replace(/\//gm, "\\");

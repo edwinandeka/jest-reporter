@@ -2,12 +2,21 @@ const { execSync } = require("child_process");
 const fs = require("fs");
 const path = require("path");
 const vscode = require("vscode");
+const { discoverTests } = require("./testDiscovery");
+const { getOpenTestFile } = require("./utils");
 
-function getChangedFiles() {
+/**
+ * Obtiene los archivos modificados en el repositorio Git usando git status.
+ * Filtra solo archivos TypeScript (.ts) y HTML (.html).
+ * @returns {string[]} Array de rutas absolutas de archivos modificados.
+ */
+function getGitChangedFiles() {
   try {
     const workspacePath = vscode.workspace.workspaceFolders[0]?.uri.fsPath;
     if (!workspacePath) {
-      vscode.window.showErrorMessage("No se encontró el directorio del proyecto.");
+      vscode.window.showErrorMessage(
+        "No se encontró el directorio del proyecto."
+      );
       return [];
     }
 
@@ -29,27 +38,62 @@ function getChangedFiles() {
       .map((line) => line.trim())
       .filter((line) => line) // Filtrar líneas vacías
       .map((line) => line.split(/\s+/).pop()) // Extraer la ruta del archivo
-      .filter((file) => file.endsWith(".ts")); // Filtrar solo archivos TypeScript
+      .filter((file) => file.endsWith(".ts") || file.endsWith(".html")); // Filtrar solo archivos TypeScript
 
     return changedFiles.map((file) => path.resolve(workspacePath, file));
   } catch (error) {
-    vscode.window.showErrorMessage("Error al obtener los archivos modificados: " + error.message);
+    vscode.window.showErrorMessage(
+      "Error al obtener los archivos modificados: " + error.message
+    );
     return [];
   }
 }
 
-function addTestsToTestExplorer(controller) {
-  const changedFiles = getChangedFiles();
+/**
+ * Limpia todos los items de prueba del controlador.
+ * @param {vscode.TestController} controller - El controlador de pruebas.
+ */
+function clearAllTests(controller) {
+  // Itera sobre todos los elementos y elimínalos
+  for (const [id, testItem] of controller.items) {
+    controller.items.delete(id);
+  }
+}
+
+/**
+ * Agrega pruebas al explorador de pruebas de VS Code.
+ * Detecta archivos modificados en Git, encuentra sus archivos .spec.ts correspondientes
+ * y los agrega al panel de pruebas.
+ * @param {vscode.TestController} controller - El controlador de pruebas.
+ * @param {string} openFilePath - Ruta del archivo actualmente abierto.
+ */
+function addTestsToTestExplorer(controller, openFilePath) {
+  // 1) Limpia todas las pruebas existentes
+  clearAllTests(controller);
+
+  //2) Obtiene los archivos modificados en el repositorio Git
+  const changedFiles = getGitChangedFiles();
+
+  //3) si el openFilePath no existe en changedFiles, lo agrega
+  if (openFilePath && !changedFiles.includes(openFilePath)) {
+    changedFiles.push(openFilePath);
+  }
+
   const testPaths = new Set(); // Usar un Set para evitar duplicados
   const testItems = [];
 
+  const openTestFile = getOpenTestFile();
+  // 4) Verificar si hay un archivo de pruebas abierto al inicio no existe en changedFiles, lo agregamos
+  if (openTestFile && !changedFiles.includes(openTestFile.fsPath)) {
+    changedFiles.push(openFilePath);
+  }
+
+  // 5) Iterar sobre los archivos modificados agregar los test items
   for (const file of changedFiles) {
     if (file.endsWith(".spec.ts")) {
       // Si es un archivo .spec.ts, agrégalo al Set si no está duplicado
       if (!testPaths.has(file)) {
         const uri = vscode.Uri.file(file);
-        const testItem = controller.createTestItem(uri.fsPath, path.basename(file), uri);
-        testItems.push(testItem);
         testPaths.add(file);
       }
     } else if (file.endsWith(".ts") && !file.endsWith(".spec.ts")) {
@@ -57,30 +101,28 @@ function addTestsToTestExplorer(controller) {
       const specFile = file.replace(/\.ts$/, ".spec.ts");
       if (fs.existsSync(specFile) && !testPaths.has(specFile)) {
         const uri = vscode.Uri.file(specFile);
-        const testItem = controller.createTestItem(uri.fsPath, path.basename(specFile), uri);
-        testItems.push(testItem);
+        testPaths.add(specFile);
+      }
+    } else if (file.endsWith(".html")) {
+      // Buscar el archivo .spec.ts correspondiente
+      const specFile = file.replace(/\.html$/, ".spec.ts");
+      if (fs.existsSync(specFile) && !testPaths.has(specFile)) {
+        const uri = vscode.Uri.file(specFile);
         testPaths.add(specFile);
       }
     }
   }
 
-  // // 🔹 Agregar evento de ejecución
-  // controller.createRunProfile(
-  //   "Run All Tests (Git Changes)",
-  //   vscode.TestRunProfileKind.Run,
-  //   async (request, token) => {
-  //     runAllTests();
-  //   },
-  //   true
-  // );
-
-  // Agregar los elementos al controlador de pruebas
-  if (testItems.length > 0) {
-    for (const testItem of testItems) {
-      controller.items.add(testItem);
+  // 6) Agregar los elementos al controlador de pruebas
+  if (testPaths.size > 0) {
+    for (const testPath of testPaths) {
+      discoverTests(controller, testPath);
+      // controller.items.add(testItem);
     }
   } else {
-    vscode.window.showInformationMessage("No se encontraron archivos de prueba asociados.");
+    vscode.window.showInformationMessage(
+      "No se encontraron archivos de prueba asociados."
+    );
   }
 }
 

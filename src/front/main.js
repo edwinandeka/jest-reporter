@@ -144,8 +144,6 @@ function replaceMessage(text, relativePath) {
 function getJsonContent(json, relativePath, message) {
   let tests = json.testResults;
 
-  debugger
-
   const testsItems = tests
     .map((test, index) => {
       return `
@@ -231,20 +229,14 @@ function getJsonContent(json, relativePath, message) {
     `;
 }
 
-// if (JSON_RESULT) {
-//   const content = getJsonContent();
-//   document.getElementById("render").innerHTML = content;
-// }
-
 /**
  * Inicializa la interfaz con los datos recibidos.
  * @param {Object} data - Datos enviados por el backend.
  */
 function results(data) {
-  debugger
-  const {   message } = data;
+  const { message } = data;
 
-  const content = getJsonContent(data.message, message.relativePath, message);
+  const content = getJsonContent(data.message, message.relativePath, message.outputError);
   document.getElementById("render").innerHTML = content;
 
   // Agregar event listeners a los resultados

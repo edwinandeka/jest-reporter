@@ -3,17 +3,39 @@ const path = require("path");
 const os = require("os");
 const { spawn } = require("child_process");
 const fs = require("fs");
+const state = require("./state");
 
+/**
+ * Clase que maneja la ejecución de pruebas Jest en VS Code.
+ * Se encarga de ejecutar Jest, procesar los resultados y actualizar la UI.
+ */
 class TestRunner {
+  /**
+   * Crea una instancia de TestRunner.
+   * @param {vscode.TestController} controller - El controlador de pruebas de VS Code.
+   * @param {vscode.ExtensionContext} context - El contexto de la extensión.
+   * @param {vscode.Uri} fileUri - URI del archivo de prueba a ejecutar.
+   */
   constructor(controller, context, fileUri) {
     this.controller = controller; // Panel de Pruebas
     this.context = context; // Contexto de la extensión
     this.fileUri = fileUri; // URI del archivo de prueba
     this.panel = null; // Webview Panel
+
+    // Registrar el RunProfile para Jest
+    this.controller.createRunProfile(
+      "Jest Reporter",
+      vscode.TestRunProfileKind.Run,
+      (request, token) => this.runTestsRequest(request, token),
+      true
+    );
   }
 
+  /**
+   * Abre un panel webview para mostrar los resultados de las pruebas.
+   * @param {string} filename - Nombre del archivo de prueba que se está ejecutando.
+   */
   openWebview(filename) {
-    // ✅ Abrir el WebView cuando corran las pruebas
     const panel = vscode.window.createWebviewPanel(
       "webview-jest-reporter",
       `Jest-R ${filename || ""}`,
@@ -43,21 +65,64 @@ class TestRunner {
     this.panel = panel;
   }
 
-  async runTests(request, token) {
-    // 🔹 Dar foco al Panel de Pruebas antes de iniciar la ejecución
+  /**
+   * Procesa una solicitud de ejecución de pruebas desde el panel de VS Code.
+   * @param {vscode.TestRunRequest} request - La solicitud de ejecución.
+   * @param {vscode.CancellationToken} token - Token de cancelación.
+   */
+  runTestsRequest(request, token) {
+    const id = request.include[0].id;
+
+    if (id.includes("##")) {
+      const [file, title] = id.split("##");
+      this.runTests(file, title);
+    } else {
+      this.runTests(request.include[0].uri.fsPath);
+    }
+  }
+
+  /**
+   * Ejecuta las pruebas Jest para un archivo específico.
+   * @param {string} fsPath - Ruta del archivo de prueba.
+   * @param {string} [title] - Título específico de prueba a ejecutar (opcional).
+   */
+  async runTests(fsPath, title) {
+    this.controller.items.forEach((item) => console.log(item.id));
+    console.log("🚀 Ejecutando pruebas:", fsPath, title);
+    // obtener el testitem desde el controller
+    const testItem = this.controller.items.get(fsPath);
+    const request = new vscode.TestRunRequest([testItem]);
+
+    // 1) Dar foco al Panel de Pruebas antes de iniciar la ejecución
     await vscode.commands.executeCommand("workbench.view.extension.test");
 
-    // ✅ Ejecutar las pruebas de Jest
+    // 2) Ejecutar las pruebas de Jest
     const run = this.controller.createTestRun(request);
-    const testItems = request.include || [...this.controller.items.values()];
+    const testItems = request.include;
     let testFiles = testItems.map((test) => test.uri?.fsPath).filter(Boolean);
 
-    // Asegurar que las rutas sean compatibles en Windows/Linux
+    // 3) Asegurar que las rutas sean compatibles en Windows/Linux
     testFiles = testFiles.map((filePath) => filePath.replace(/\\/g, "/"));
 
-    testItems.forEach((test) => run.started(test));
+    testItems.forEach((test) => {
+      run.started(test);
 
-    // Obtener el nombre del archivo de prueba osi son varios del directorio
+      // si tiene children es un describe tambien
+      if (test.children.size > 0) {
+        test.children.forEach((child) => {
+          run.started(child);
+
+          // si tiene children es un it
+          if (child.children.size > 0) {
+            child.children.forEach((it) => {
+              run.started(it);
+            });
+          }
+        });
+      }
+    });
+
+    // 4) Obtener el nombre del archivo de prueba o si son varios del directorio
     const filename =
       testFiles.length > 1 ? "Some files" : path.basename(testFiles[0]);
 
@@ -80,9 +145,14 @@ class TestRunner {
       return;
     }
 
-    const args = ["--json", "--outputFile=jest-results.json"];
+    const args = ["--json"];
     if (testFiles.length > 0) {
       args.push(...testFiles);
+    }
+
+    if (title) {
+      // Ejecuta un solo `it(...)`
+      args.push("-t", `"${title}"`);
     }
 
     console.log(`Ejecutando Jest: ${jestPath} ${args.join(" ")}`);
@@ -122,10 +192,9 @@ class TestRunner {
             Date.now()
           )
         );
-        this.processJestResults(run, testItems, outputError);
-        // this.sendToWebview("error", `Error:\n${outputError}`);
+        this.processJestResults(run, testFiles[0], output, outputError);
       } else {
-        this.processJestResults(run, testItems, outputError);
+        this.processJestResults(run, testFiles[0], output, outputError);
       }
 
       run.end();
@@ -148,6 +217,10 @@ class TestRunner {
     });
   }
 
+  /**
+   * Obtiene la ruta del ejecutable de Jest según el sistema operativo.
+   * @returns {string | null} Ruta al ejecutable de Jest o null si no existe.
+   */
   getJestPath() {
     const workspaceFolders = vscode.workspace.workspaceFolders;
     if (!workspaceFolders || workspaceFolders.length === 0) {
@@ -170,66 +243,122 @@ class TestRunner {
     return null;
   }
 
-  processJestResults(run, testItems, outputError) {
+  /**
+   * Procesa los resultados JSON de Jest y actualiza el estado de las pruebas.
+   * @param {vscode.TestRun} run - La instancia de ejecución de pruebas.
+   * @param {string} fsPath - Ruta del archivo de prueba.
+   * @param {string} output - Salida estándar de Jest.
+   * @param {string} outputError - Salida de error de Jest.
+   */
+  processJestResults(run, fsPath, output, outputError) {
     try {
-      const workspacePath = vscode.workspace.workspaceFolders[0].uri.fsPath;
-      const resultsPath = path.join(workspacePath, "jest-results.json");
-
-      if (!fs.existsSync(resultsPath)) {
-        throw new Error("No se encontró el archivo de resultados de Jest.");
+      const index = output.indexOf("{");
+      if (index === -1) {
+        const errorMsg = `No se pudo procesar la salida de Jest.
+Salida recibida: ${output.substring(0, 200)}...
+Error: ${outputError}`;
+        console.error(errorMsg);
+        this.sendToWebview("error", errorMsg);
+        throw new Error("No se encontró un objeto JSON válido en la salida de Jest.");
       }
 
-      let results = JSON.parse(fs.readFileSync(resultsPath, "utf8"));
+      const jsonString = output.substring(index).trim();
+      let results;
+
+      try {
+        results = JSON.parse(jsonString);
+      } catch (parseError) {
+        const errorMsg = `Error al parsear JSON de Jest: ${parseError.message}
+Contenido recibido: ${jsonString.substring(0, 200)}...`;
+        console.error(errorMsg);
+        this.sendToWebview("error", errorMsg);
+        throw parseError;
+      }
+
+      if (!results.testResults || !Array.isArray(results.testResults)) {
+        const errorMsg = "La respuesta de Jest no tiene el formato esperado (falta testResults)";
+        console.error(errorMsg, results);
+        this.sendToWebview("error", errorMsg);
+        throw new Error(errorMsg);
+      }
 
       const relativePath = results.testResults[0].name;
       results.relativePath = relativePath;
+      results.outputError = outputError;
 
       // ✅ Enviar los resultados al WebView
       this.sendToWebview("results", results);
 
-      // ✅ Enviar los resultados al Panel de Pruebas de VS Code
-      console.log("Procesando resultados de Jest...");
-      results.testResults.forEach((result) => {
-        console.log(`Procesando prueba: ${result.name}`);
-        const testItem = testItems.find(
-          // tolowercase
-          (item) => item.id.toLowerCase() === result.name.toLowerCase()
-        );
+      state.setTestResults(results);
 
-        if (testItem) {
-          console.log(`Prueba encontrada en testItems: ${testItem.label}`);
-          if (result.status === "passed") {
-            console.log(`Marcando como aprobada: ${testItem.label}`);
-            run.passed(testItem, result.duration);
-          } else if (result.status === "failed") {
-            console.log(`Marcando como fallida: ${testItem.label}`);
-            const messages = result.assertionResults.map(
-              (assertion) =>
-                new vscode.TestMessage(assertion.failureMessages.join("\n"))
-            );
-            run.failed(testItem, messages, result.duration);
-          } else if (
-            result.status === "pending" ||
-            result.status === "skipped"
-          ) {
-            console.log(`Marcando como omitida: ${testItem.label}`);
-            run.skipped(testItem);
-          }
+      results.testResults.forEach((testFileResult) => {
+        const fileUri = vscode.Uri.file(testFileResult.name);
+
+        // Procesar cada test result del archivo
+        const parentTestItem = this.controller.items.get(fileUri.fsPath);
+        if (parentTestItem) {
+          console.log(`Procesando pruebas del archivo: ${testFileResult.name}`);
+          this.markChildTests(
+            run,
+            parentTestItem,
+            testFileResult.assertionResults
+          );
         } else {
-          console.log(`Prueba no encontrada en testItems: ${result.name}`);
+          console.log(
+            `⚠️ Archivo de prueba no encontrado en TestItems: ${testFileResult.name}`
+          );
         }
       });
+
+      run.end();
     } catch (error) {
       vscode.window.showErrorMessage(
         `Error al procesar los resultados de Jest: ${error.message}`
       );
-      this.sendToWebview(
-        "error",
-        `Error al procesar resultados: ${error.message}`
-      );
     }
   }
 
+  /**
+   * Marca el estado de las pruebas hijas según los resultados de Jest.
+   * @param {vscode.TestRun} run - La instancia de ejecución de pruebas.
+   * @param {vscode.TestItem} testItem - El item de prueba padre.
+   * @param {Array} results - Array de resultados de aserciones de Jest.
+   */
+  markChildTests(run, testItem, results) {
+    // Iterar sobre los hijos del TestItem
+    testItem.children.forEach((child) => {
+      child.children.forEach((childTest) => {
+        const result = results.find((r) => r.title === childTest.label);
+        if (result) {
+          switch (result.status) {
+            case "passed":
+              run.passed(childTest, result.duration || 0);
+              console.log(`✅ Marcado como pasado: ${child.label}`);
+              break;
+            case "failed":
+              const message = new vscode.TestMessage(
+                result.failureMessages.join("\n")
+              );
+              run.failed(childTest, message, result.duration || 0);
+              console.log(`❌ Marcado como fallido: ${child.label}`);
+              break;
+            case "skipped":
+              run.skipped(childTest);
+              console.log(`⏭️ Marcado como omitido: ${child.label}`);
+              break;
+          }
+        } else {
+          console.log(`⚠️ Resultado no encontrado para: ${child.label}`);
+        }
+      });
+    });
+  }
+
+  /**
+   * Envía un mensaje al webview.
+   * @param {string} command - El comando a ejecutar en el webview.
+   * @param {any} message - El mensaje o datos a enviar.
+   */
   sendToWebview(command, message) {
     if (this.panel && this.panel.webview) {
       this.panel.webview.postMessage({

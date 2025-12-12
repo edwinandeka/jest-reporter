@@ -2,7 +2,7 @@
   "name": "jest-reporter",
     "displayName": "Jest Reporter",
     "description": "Run tests with Jest and view results interactively in a webview.",
-    "version": "1.5.1",
+    "version": "2.0.4",
   "engines": {
     "vscode": "^1.54.0"
   },
@@ -30,8 +30,13 @@
     "commands": [
       {
         "command": "extension.runJestTest",
-        "title": "Jest Reporter: Run Test File",
-        "category": "Testing"
+        "title": "Jest Reporter: Run Test File (runJestTest)",
+        "category": "jest-reporter"
+      },
+      {
+        "command": "extension.runTestsInFolder",
+        "title": "Run All Tests in Folder",
+        "category": "jest-reporter"
       }
     ],
     "menus": {
@@ -47,6 +52,11 @@
           "command": "extension.runJestTest",
           "when": "resourceExtname == .ts && resourceFilename =~ /.spec.ts$/",
           "group": "testing"
+        },
+        {
+          "command": "extension.runTestsInFolder",
+          "when": "resourceUri && resourceIsDirectory",
+          "group": "navigation"
         }
       ]
     }
@@ -63,9 +73,6 @@
     "eslint": "^8.50.0",
     "jest": "^29.0.0",
     "vscode-test": "^1.4.0"
-  },
-  "dependencies": {
-    "cross-spawn": "^7.0.3"
   },
   "icon": "images/logo-jest-reporter.png",
   "galleryBanner": {

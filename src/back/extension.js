@@ -1,73 +1,42 @@
 const vscode = require("vscode");
-const path = require("path");
-const { registerCommands } = require("./commands");
-const { TestRunner } = require("./testRunner");
-const { addTestsToTestExplorer } = require("./gitFileWatcher");
+const {
+  registerRunJestTestCommand,
+  registerFileSaveListener,
+} = require("./commands");
+const state = require("./state");
 
-function getOpenTestFile() {
-  const openEditors = vscode.window.visibleTextEditors;
-  for (const editor of openEditors) {
-    const filePath = editor.document.uri.fsPath;
-    if (filePath.endsWith(".spec.ts")) {
-      return editor.document.uri;
-    }
-  }
-  return null;
-}
+// Obtener la versión desde el package.json
+const packageJson = require("../../package.json");
+const version = packageJson.version;
 
+/**
+ * Activa la extensión Jest Reporter.
+ * Inicializa el controlador de pruebas y registra los comandos necesarios.
+ * @param {vscode.ExtensionContext} context - El contexto de activación de la extensión.
+ */
 function activate(context) {
   console.log("Jest Test Explorer Activado");
 
-  const controller = vscode.tests.createTestController(
-    "jestTestController",
-    "Jest Tests"
-  );
-  context.subscriptions.push(controller);
-
-  const testRunner = new TestRunner(controller, context);
-
-  // Verificar si hay un archivo de pruebas abierto al inicio
-  const openTestFile = getOpenTestFile();
-  if (openTestFile) {
-    // Crear una solicitud de prueba para el archivo abierto
-    const request = new vscode.TestRunRequest([
-      controller.createTestItem(
-        openTestFile.fsPath,
-        path.basename(openTestFile.fsPath),
-        openTestFile
-      ),
-    ]);
-    testRunner.runTests(request);
+  if (!state.getController()) {
+    const controllerInstance = vscode.tests.createTestController(
+      "jestTestController",
+      "Jest Reporter " + version
+    );
+    state.setController(controllerInstance);
+    context.subscriptions.push(controllerInstance);
   }
 
-  // Crear el perfil de ejecución de pruebas
-  controller.createRunProfile(
-    "Jest Reporter",
-    vscode.TestRunProfileKind.Run,
-    (request, token) => testRunner.runTests(request, token),
-    true
-  );
-
-  // Agregar pruebas automáticamente si hay archivos en el repositorio Git
-  addTestsToTestExplorer(controller);
-
-  // Registrar comandos correctamente
-  registerCommands(context);
-
-  const disposable = vscode.workspace.onDidSaveTextDocument((document) => {
-    if (
-      document.fileName.endsWith(".ts") ||
-      document.fileName.endsWith(".html")
-    ) {
-      addTestsToTestExplorer(controller);
-    }
-  });
-
-  context.subscriptions.push(disposable);
+  // Registrar comandos
+  registerRunJestTestCommand(context, state.getController());
+  registerFileSaveListener(context, state.getController());
 }
 
+/**
+ * Desactiva la extensión y limpia los recursos.
+ */
 function deactivate() {
   console.log("Jest Test Explorer Desactivado");
+  state.clear();
 }
 
 module.exports = {
