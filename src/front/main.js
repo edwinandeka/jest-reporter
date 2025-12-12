@@ -262,22 +262,26 @@ function getJsonContent(json, relativePath, message) {
   const cmd = `./node_modules/.bin/jest  ${relativePath}`;
 
   return `
-        <div>cmd: ${cmd}</div>
-        <div>Test Suites: ${json.numPassedTestSuites} passed, ${json.numTotalTestSuites} total</div>
-        <div>Tests:       ${json.numPassedTests} passed, ${json.numTotalTests} total</div>
-        <br>
-        <div>Test Suites: ${json.numFailedTestSuites} failed, ${json.numTotalTestSuites} total</div>
-        <div>Tests:       ${json.numFailedTests} failed, ${json.numTotalTests} total</div>
-        <br>
-        <div>Snapshots:   ${json.snapshot.total} total</div>
-        <div>Time:        7.248 s</div>
-    </div>
       <div id="content-test" >
         ${testsItems}
       </div>
 
-      <pre>${message}</pre>
-
+      <div id="footer-info">
+        <div class="footer-section">
+          <div class="footer-cmd">cmd: ${cmd}</div>
+        </div>
+        <div class="footer-section">
+          <div>Test Suites: <span class="success">${json.numPassedTestSuites} passed</span>, ${json.numTotalTestSuites} total</div>
+          <div>Tests: <span class="success">${json.numPassedTests} passed</span>, ${json.numTotalTests} total</div>
+        </div>
+        <div class="footer-section">
+          <div>Test Suites: <span class="fail">${json.numFailedTestSuites} failed</span>, ${json.numTotalTestSuites} total</div>
+          <div>Tests: <span class="fail">${json.numFailedTests} failed</span>, ${json.numTotalTests} total</div>
+        </div>
+        <div class="footer-section">
+          <div>Snapshots: ${json.snapshot.total} total</div>
+        </div>
+      </div>
     `;
 }
 

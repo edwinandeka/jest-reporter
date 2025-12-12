@@ -29,8 +29,9 @@
     "commands": [
       {
         "command": "extension.runJestTest",
-        "title": "Jest Reporter: Run Test File (runJestTest)",
-        "category": "jest-reporter"
+        "title": "Run Test File",
+        "category": "Jest Reporter",
+        "icon": "$(play)"
       },
       {
         "command": "extension.runTestsInFolder",
@@ -39,6 +40,13 @@
       }
     ],
     "menus": {
+      "editor/title": [
+        {
+          "command": "extension.runJestTest",
+          "when": "resourceFilename =~ /.spec.ts$/",
+          "group": "navigation"
+        }
+      ],
       "editor/context": [
         {
           "command": "extension.runJestTest",

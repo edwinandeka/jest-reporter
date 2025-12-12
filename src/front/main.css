@@ -2,6 +2,7 @@ body {
   color: #ccc;
   font-family: monospace;
   padding-top: 95px;
+  padding-bottom: 80px;
 }
 
 .test-item {
@@ -105,17 +106,18 @@ li.failed .open {
 
 .toolbar-file {
   position: fixed;
-  right: 0;
+  left: 0;
   top: 38px;
   display: flex;
   justify-content: space-between;
   align-items: center;
   gap: 8px;
-  width: 100%;
+  width: calc(100% - 32px);
   background: #2a2a2a;
   padding: 6px 16px;
   z-index: 998;
   border-top: 1px solid #444;
+  border-bottom: 1px solid #4b4b4b;
 }
 
 .toolbar-file-spacer {
@@ -144,19 +146,6 @@ li.failed .open {
 .toolbar-file-btn:active {
   background: #004578;
   box-shadow: none;
-}
-
-.toolbar-file-btn-run {
-  background: #16a34a;
-}
-
-.toolbar-file-btn-run:hover {
-  background: #15803d;
-  box-shadow: 0 1px 3px rgba(22, 163, 74, 0.3);
-}
-
-.toolbar-file-btn-run:active {
-  background: #14532d;
 }
 
 .container-closed .closed.passed {
@@ -241,4 +230,42 @@ pre {
 
 .json-curly {
   color: #fb25cd; /* Color para las llaves */
+}
+
+#footer-info {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  background: #1e1e1e;
+  border-top: 2px solid #4b4b4b;
+  padding: 8px 16px;
+  display: flex;
+  gap: 16px;
+  font-size: 11px;
+  z-index: 997;
+  overflow-x: auto;
+  box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.footer-section {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  white-space: nowrap;
+}
+
+.footer-cmd {
+  color: #61afef;
+  font-weight: bold;
+}
+
+#footer-info .success {
+  color: #98c379;
+  font-weight: bold;
+}
+
+#footer-info .fail {
+  color: #e06c75;
+  font-weight: bold;
 }
