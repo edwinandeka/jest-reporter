@@ -389,18 +389,49 @@ Contenido recibido: ${jsonString.substring(0, 200)}...`;
       // Jest pone información valiosa en stderr que no está en el JSON
       results.outputError = outputError;
 
-      // Agregar el output error al principio de los failureMessages si hay errores
-      if (outputError && results.testResults) {
+      // Mejorar los mensajes de error eliminando duplicados y organizando la información
+      if (results.testResults) {
         results.testResults.forEach((testResult: JestTestResult) => {
           if (testResult.status === 'failed' && testResult.assertionResults) {
             testResult.assertionResults.forEach((assertion: JestAssertionResult) => {
-              if (assertion.status === 'failed' && assertion.failureMessages) {
-                // Añadir información del stderr al principio si no está ya incluida
-                const firstMessage = assertion.failureMessages[0] || '';
-                if (outputError && !firstMessage.includes(outputError.substring(0, 50))) {
-                  // Solo agregar si no está duplicado
-                  assertion.failureMessages.unshift(outputError);
+              if (assertion.status === 'failed' && assertion.failureMessages && assertion.failureMessages.length > 0) {
+                // Combinar todos los mensajes y dividir por líneas
+                const allMessages = assertion.failureMessages.join('\n');
+                const lines = allMessages.split('\n');
+
+                // Filtrar líneas duplicadas manteniendo el orden
+                const seenLines = new Set<string>();
+                const uniqueLines: string[] = [];
+
+                for (const line of lines) {
+                  const trimmedLine = line.trim();
+                  // Ignorar líneas vacías y duplicados
+                  if (trimmedLine && !seenLines.has(trimmedLine)) {
+                    seenLines.add(trimmedLine);
+                    uniqueLines.push(line);
+                  }
                 }
+
+                // Reorganizar: primero el mensaje de error principal, luego el stack trace
+                const errorMessage: string[] = [];
+                const stackTrace: string[] = [];
+                let inStackTrace = false;
+
+                for (const line of uniqueLines) {
+                  // Detectar inicio del stack trace
+                  if (line.trim().startsWith('at ') || inStackTrace) {
+                    inStackTrace = true;
+                    stackTrace.push(line);
+                  } else {
+                    errorMessage.push(line);
+                  }
+                }
+
+                // Reconstruir el mensaje: error principal + stack trace organizado
+                assertion.failureMessages = [
+                  errorMessage.join('\n'),
+                  stackTrace.length > 0 ? '\n' + stackTrace.join('\n') : ''
+                ].filter(Boolean);
               }
             });
           }
