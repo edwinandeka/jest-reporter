@@ -19,6 +19,9 @@ body {
   padding: 0 20px;
   color: #d4d4d4;
   letter-spacing: 0.3px;
+  background: linear-gradient(180deg, #2d2d30 0%, #252526 100%);
+  padding: 12px 16px;
+  border-bottom: 1px solid #3e3e42;
 }
 
 .arrow {
@@ -534,4 +537,8 @@ pre {
   box-shadow: none;
   max-height: 400px;
   overflow-y: auto;
+}
+
+div#content-test {
+    padding: 0 24px;
 }

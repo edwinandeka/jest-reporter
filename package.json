@@ -2,9 +2,9 @@
   "name": "jest-reporter",
   "displayName": "Jest Reporter",
   "description": "Run tests with Jest and view results interactively in a webview.",
-  "version": "2.0.4",
+  "version": "2.1.1",
   "engines": {
-    "vscode": "^1.75.0"
+    "vscode": "^1.107.0"
   },
   "categories": [
     "Testing"

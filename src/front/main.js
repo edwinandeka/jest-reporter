@@ -284,24 +284,32 @@ function getJsonContent(json, relativePath, message) {
   const testFilePath = tests[0].name;
   const cmd = `./node_modules/.bin/jest "${testFilePath}"`;
 
-  // Preparar el output completo para mostrar (console.log, etc.)
+  // Preparar el output completo para mostrar (console.log, stderr, stdout, etc.)
   let fullOutputSection = '';
-  if (json.fullOutput) {
-    // Eliminar colores ANSI y el JSON al final
-    let cleanOutput = json.fullOutput.replace(/\x1b\[[0-9;]*m/g, '');
+  if (json.fullOutput || json.outputError) {
+    // Combinar stdout y stderr para tener el output completo
+    let combinedOutput = '';
 
-    // Encontrar donde empieza el JSON y quitarlo
-    const jsonStart = cleanOutput.indexOf('{');
-    if (jsonStart > 0) {
-      cleanOutput = cleanOutput.substring(0, jsonStart).trim();
+    // if (json.fullOutput) {
+    //   combinedOutput += json.fullOutput;
+    // }
+
+    if (json.outputError && json.outputError.trim().length > 0) {
+      if (combinedOutput) {
+        combinedOutput += '\n\n';
+      }
+      combinedOutput += json.outputError;
     }
+
+    // Eliminar solo los colores ANSI, mantener todo el contenido
+    let cleanOutput = combinedOutput.replace(/\x1b\[[0-9;]*m/g, '');
 
     // Solo mostrar si hay contenido útil (no solo espacios en blanco)
     if (cleanOutput.trim().length > 0) {
       fullOutputSection = `
         <div class="output-section">
           <div class="output-header">
-            <span class="output-title">📋 Console Output</span>
+            <span class="output-title">🖥️ Full Test Output</span>
           </div>
           <pre class="output-content">${cleanOutput}</pre>
         </div>

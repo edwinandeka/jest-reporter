@@ -68,6 +68,15 @@ Add a menu in file editor (.spec.ts), it allows run the test using Jest (.spec.t
 
 ## Release Notes
 
+### 2.1.1
+- Enhanced UI with modern design and improved visual feedback
+- Added collapsible arrow indicators for test results (up when open, down when closed)
+- Only failed tests are now expandable - passed tests are non-interactive for cleaner UI
+- Added full test output section showing complete console logs and Jest output
+- Footer play button color standardized to blue for consistency
+- Improved error message formatting with better stack trace organization
+- Added visual distinction between passed and failed tests with color-coded backgrounds
+
 ### 1.5.0
 Integration with the VS Code test panel
 
