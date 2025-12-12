@@ -283,19 +283,24 @@ function getJsonContent(json, relativePath, message) {
       </div>
 
       <div id="footer-info">
-        <div class="footer-section">
-          <div class="footer-cmd">cmd: <a href="#" onclick="runCommandInTerminal('${cmd.replace(/'/g, "\\'")}'); return false;" class="cmd-link">${cmd}</a></div>
+        <div class="footer-results">
+          <div class="footer-section">
+            <div>Test Suites: <span class="success">${json.numPassedTestSuites} passed</span> / <span class="fail">${json.numFailedTestSuites} failed</span></div>
+            <div>Total: ${json.numTotalTestSuites} suites</div>
+          </div>
+          <div class="footer-section">
+            <div>Tests: <span class="success">${json.numPassedTests} passed</span> / <span class="fail">${json.numFailedTests} failed</span></div>
+            <div>Total: ${json.numTotalTests} tests</div>
+          </div>
+          <div class="footer-section">
+            <div>Snapshots: ${json.snapshot.total} total</div>
+          </div>
         </div>
-        <div class="footer-section">
-          <div>Test Suites: <span class="success">${json.numPassedTestSuites} passed</span>, ${json.numTotalTestSuites} total</div>
-          <div>Tests: <span class="success">${json.numPassedTests} passed</span>, ${json.numTotalTests} total</div>
-        </div>
-        <div class="footer-section">
-          <div>Test Suites: <span class="fail">${json.numFailedTestSuites} failed</span>, ${json.numTotalTestSuites} total</div>
-          <div>Tests: <span class="fail">${json.numFailedTests} failed</span>, ${json.numTotalTests} total</div>
-        </div>
-        <div class="footer-section">
-          <div>Snapshots: ${json.snapshot.total} total</div>
+        <div class="footer-cmd-container">
+          <div class="footer-cmd">
+            <span>cmd:</span> <a href="#" onclick="runCommandInTerminal('${cmd.replace(/'/g, "\\'")}'); return false;" class="cmd-link">${cmd}</a>
+          </div>
+          <button class="footer-play-btn" onclick="runCommandInTerminal('${cmd.replace(/'/g, "\\'")}'); return false;" title="Run command in terminal">▶</button>
         </div>
       </div>
     `;
@@ -395,11 +400,16 @@ function loading(data) {
       </div>
 
       <div id="footer-info">
-        <div class="footer-section">
-          <div class="footer-cmd">cmd: <a href="#" onclick="runCommandInTerminal('${cmd.replace(/'/g, "\\'")}'); return false;" class="cmd-link">${cmd}</a></div>
+        <div class="footer-results">
+          <div class="footer-section">
+            <div>Status: <span class="running">In Progress...</span></div>
+          </div>
         </div>
-        <div class="footer-section">
-          <div>Status: <span class="running">In Progress...</span></div>
+        <div class="footer-cmd-container">
+          <div class="footer-cmd">
+            <span>cmd:</span> <a href="#" onclick="runCommandInTerminal('${cmd.replace(/'/g, "\\'")}'); return false;" class="cmd-link">${cmd}</a>
+          </div>
+          <button class="footer-play-btn" onclick="runCommandInTerminal('${cmd.replace(/'/g, "\\'")}'); return false;" title="Run command in terminal">▶</button>
         </div>
       </div>
 `;
