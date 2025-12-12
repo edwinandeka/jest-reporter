@@ -2,12 +2,17 @@ var vscode = acquireVsCodeApi();
 
 /**
  * Maneja el evento de clic para colapsar o expandir los resultados.
+ * Solo funciona para tests que fallaron.
  * @param {Event} event - El evento de clic.
  */
 function toggleResult(event) {
   const parentElement = event.target.closest(".open");
   if (parentElement) {
-    parentElement.parentElement.classList.toggle("closed");
+    const listItem = parentElement.parentElement;
+    // Solo permitir toggle en items que fallaron
+    if (listItem.classList.contains("failed")) {
+      listItem.classList.toggle("closed");
+    }
   }
 }
 
@@ -231,7 +236,7 @@ function getJsonContent(json, relativePath, message) {
                     return `
                     <li class="closed ${status}">
                         <p class="open">
-                            <span class="arrow"> < </span>
+                            <span class="arrow">▼</span>
                             <span class="${status}">${
                       status == "failed" ? "❌" : "✅"
                     }</span>
@@ -252,7 +257,7 @@ function getJsonContent(json, relativePath, message) {
                       return `
                     <li class="closed ${result.status}">
                         <p class="open">
-                            <span class="arrow"> < </span>
+                            <span class="arrow">▼</span>
                             <span class="${result.status}">${
                         result.status == "failed" ? "❌" : "✅"
                       }</span>

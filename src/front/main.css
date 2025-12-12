@@ -2,7 +2,8 @@ body {
   margin: 0;
   padding: 0;
   color: #e4e4e4;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, sans-serif;
   background: #1e1e1e;
   padding-top: 110px;
   padding-bottom: 100px;
@@ -21,12 +22,14 @@ body {
 }
 
 .arrow {
-  transform: rotate(90deg);
+  transform: rotate(0deg);
   display: inline-block;
-  font-weight: 600;
-  font-size: 16px;
+  font-weight: 400;
+  font-size: 12px;
   transition: transform 0.2s ease;
   color: #8c8c8c;
+  width: 16px;
+  text-align: center;
 }
 
 ul {
@@ -44,7 +47,8 @@ p.open {
   padding: 0 20px;
   margin: 0;
   cursor: pointer;
-  min-height: 36px;
+  min-height: 32px;
+  margin-bottom: 3px;
   transition: background-color 0.15s ease;
   user-select: none;
 }
@@ -66,7 +70,7 @@ li:first-child {
 }
 
 .content {
-  font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+  font-family: "Consolas", "Monaco", "Courier New", monospace;
   font-size: 12px;
   overflow: auto;
   padding: 16px 20px 16px 48px;
@@ -80,16 +84,39 @@ li:first-child {
 }
 
 .closed .arrow {
-  transform: rotate(0deg);
+  transform: rotate(90deg);
+}
+
+/* Ocultar la flecha en tests que pasaron */
+li.passed .arrow {
+  visibility: hidden;
+}
+
+/* Deshabilitar el cursor pointer en tests que pasaron */
+li.passed p.open {
+  cursor: default;
+}
+
+/* No mostrar hover en tests que pasaron */
+li.passed p.open:hover {
+  background-color: transparent;
 }
 
 li.passed .open {
-  background: linear-gradient(90deg, rgba(16, 124, 16, 0.15) 0%, rgba(16, 124, 16, 0.05) 100%);
+  background: linear-gradient(
+    90deg,
+    rgba(16, 124, 16, 0.15) 0%,
+    rgba(16, 124, 16, 0.05) 100%
+  );
   border-left: 3px solid #107c10;
 }
 
 li.failed .open {
-  background: linear-gradient(90deg, rgba(232, 17, 35, 0.15) 0%, rgba(232, 17, 35, 0.05) 100%);
+  background: linear-gradient(
+    90deg,
+    rgba(232, 17, 35, 0.15) 0%,
+    rgba(232, 17, 35, 0.05) 100%
+  );
   border-left: 3px solid #e81123;
 }
 
@@ -122,7 +149,7 @@ li.failed .open {
 }
 
 .toolbar h1::before {
-  content: '⚡';
+  content: "⚡";
   font-size: 20px;
 }
 
@@ -190,7 +217,7 @@ li.failed .open {
   border-radius: 4px;
   cursor: pointer;
   font-size: 12px;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   transition: all 0.2s ease;
   white-space: nowrap;
   font-weight: 500;
@@ -282,7 +309,7 @@ pre {
   color: #d4d4d4;
   padding: 16px;
   border-radius: 6px;
-  font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+  font-family: "Consolas", "Monaco", "Courier New", monospace;
   font-size: 12px;
   line-height: 1.6;
   overflow-x: auto;
@@ -373,7 +400,7 @@ pre {
   color: #9cdcfe;
   font-weight: 600;
   flex: 1;
-  font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+  font-family: "Consolas", "Monaco", "Courier New", monospace;
   font-size: 11px;
 }
 
@@ -445,7 +472,8 @@ pre {
 }
 
 @keyframes pulse {
-  0%, 100% {
+  0%,
+  100% {
     opacity: 1;
     text-shadow: 0 0 6px rgba(79, 193, 255, 0.6);
   }
