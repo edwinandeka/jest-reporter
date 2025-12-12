@@ -1,7 +1,7 @@
 body {
   color: #ccc;
   font-family: monospace;
-  padding-top: 110px;
+  padding-top: 95px;
 }
 
 .test-item {
@@ -110,9 +110,10 @@ li.failed .open {
   display: flex;
   justify-content: flex-end;
   align-items: center;
+  gap: 8px;
   width: 100%;
   background: #2a2a2a;
-  padding: 8px 16px;
+  padding: 6px 16px;
   z-index: 998;
   border-top: 1px solid #444;
 }
@@ -121,28 +122,23 @@ li.failed .open {
   background: #007acc;
   color: #fff;
   border: none;
-  padding: 8px 16px;
-  border-radius: 4px;
+  padding: 4px 12px;
+  border-radius: 3px;
   cursor: pointer;
-  font-size: 13px;
+  font-size: 11px;
   font-family: monospace;
-  transition: all 0.2s ease;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
+  transition: all 0.15s ease;
   white-space: nowrap;
-  font-weight: 500;
+  font-weight: 400;
 }
 
 .toolbar-file-btn:hover {
   background: #005a9e;
-  transform: translateY(-1px);
-  box-shadow: 0 2px 6px rgba(0, 122, 204, 0.4);
+  box-shadow: 0 1px 3px rgba(0, 122, 204, 0.3);
 }
 
 .toolbar-file-btn:active {
   background: #004578;
-  transform: translateY(0);
   box-shadow: none;
 }
 
