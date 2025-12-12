@@ -80,8 +80,17 @@ class TestRunner {
         panel.webview.html = getWebviewContent(panel, this.context.extensionPath);
         panel.webview.onDidReceiveMessage((message) => {
             if (message.command === 'openFile') {
-                const filePath = vscode.Uri.file(message.filePath);
-                vscode.window.showTextDocument(filePath);
+                const workspacePath = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+                if (workspacePath && message.path) {
+                    const { openFileAtPathAndLine } = require('./backend');
+                    const line = message.line || 1;
+                    openFileAtPathAndLine(message.path, line, workspacePath);
+                }
+                else if (message.path) {
+                    // Fallback: abrir sin línea específica
+                    const filePath = vscode.Uri.file(message.path);
+                    vscode.window.showTextDocument(filePath);
+                }
             }
         });
         // Verificar si el usuario ha cerrado el webview y limpiar la referencia

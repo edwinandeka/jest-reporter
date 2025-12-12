@@ -101,8 +101,16 @@ export class TestRunner {
 
     panel.webview.onDidReceiveMessage((message: any) => {
       if (message.command === 'openFile') {
-        const filePath: vscode.Uri = vscode.Uri.file(message.filePath);
-        vscode.window.showTextDocument(filePath);
+        const workspacePath: string | undefined = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+        if (workspacePath && message.path) {
+          const { openFileAtPathAndLine } = require('./backend');
+          const line: number = message.line || 1;
+          openFileAtPathAndLine(message.path, line, workspacePath);
+        } else if (message.path) {
+          // Fallback: abrir sin línea específica
+          const filePath: vscode.Uri = vscode.Uri.file(message.path);
+          vscode.window.showTextDocument(filePath);
+        }
       }
     });
 

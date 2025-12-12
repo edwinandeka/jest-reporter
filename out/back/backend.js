@@ -57,13 +57,18 @@ function getWebviewContent(panel, extensionPath) {
 /**
  * Abre un archivo en el editor de VS Code en una línea específica.
  * Normaliza las rutas de Windows y posiciona el cursor en la línea indicada.
- * @param filePath - Ruta relativa o completa del archivo.
+ * @param filePath - Ruta relativa o absoluta del archivo.
  * @param line - Número de línea (base 1) donde posicionar el cursor.
  * @param workspacePath - Ruta del workspace para resolver rutas relativas.
  */
 function openFileAtPathAndLine(filePath, line, workspacePath) {
+    // Normalizar la ruta
     filePath = filePath.replace(/\//gm, '\\');
-    const openPath = vscode.Uri.file(path.join(workspacePath, filePath));
+    // Determinar si es una ruta absoluta (contiene : en Windows o empieza con / en Unix)
+    const isAbsolute = path.isAbsolute(filePath);
+    // Si es relativa, unirla con workspacePath; si es absoluta, usarla directamente
+    const finalPath = isAbsolute ? filePath : path.join(workspacePath, filePath);
+    const openPath = vscode.Uri.file(finalPath);
     vscode.workspace.openTextDocument(openPath).then((doc) => {
         vscode.window.showTextDocument(doc).then((editor) => {
             const position = new vscode.Position(line - 1, 0); // Línea es 1-based, posición es 0-based

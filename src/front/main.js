@@ -13,16 +13,34 @@ function toggleResult(event) {
 
 /**
  * Envía un mensaje al backend para abrir un archivo en una línea específica.
- * @param {string} link - Enlace con la ruta y línea (formato: "path:line").
+ * @param {string} link - Enlace con la ruta y línea (formato: "path:line:column").
  */
 function openFile(link) {
   link = decodeURI(link);
-  const [filePath, line] = link.split(":");
+
+  console.log('🔗 openFile recibió:', link);
+
+  // Manejar rutas de Windows que contienen ":" después de la letra de unidad (ej: F:/path)
+  // Formato esperado: F:/sysgroup/.../file.ts:40:28
+  let filePath = link;
+  let line = 1;
+
+  // Buscar el último ":" que precede a un número (indica línea)
+  // El patrón busca: cualquier texto + : + dígitos + opcionalmente : + dígitos
+  const matches = link.match(/^(.+?):(\d+)(?::(\d+))?$/);
+
+  if (matches) {
+    filePath = matches[1]; // Ruta completa del archivo
+    line = parseInt(matches[2], 10); // Número de línea
+    console.log('✅ Parseado correctamente - Archivo:', filePath, 'Línea:', line);
+  } else {
+    console.log('⚠️ No se pudo parsear el link, usando ruta completa');
+  }
 
   vscode.postMessage({
     command: "openFile",
     path: filePath,
-    line: parseInt(line),
+    line: line,
   });
 }
 
