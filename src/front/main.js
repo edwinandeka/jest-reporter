@@ -133,20 +133,23 @@ function replaceMessage(text, relativePath) {
 
   let message = text.replace(/\x1b\[[0-9;]*m/g, "");
 
-  let regex = new RegExp(relativePath + "\\s*(.+?):(\\d+)", "gmi");
+  // Regex mejorado para detectar rutas de archivos .ts con línea y columna
+  // Formato: ruta/archivo.ts:línea:columna o ruta/archivo.ts:línea
+  // Detecta rutas absolutas (Windows: C:/, D:/, etc.) o relativas
+  let regex = /([A-Za-z]:\/[^\s:]+\.(?:ts|js|tsx|jsx)|(?:src|app)\/[^\s:]+\.(?:ts|js|tsx|jsx)):(\d+)(?::(\d+))?/gim;
 
   const matches = message.match(regex);
 
   if (matches) {
     for (let index = 0; index < matches.length; index++) {
-      let link = matches[index];
+      let link = matches[index].trim();
       link = link.replace(/\\/gim, "/");
 
       let html = `<a href="#"  onclick="openFile('${encodeURI(
         link
       )}')" >${link}</a>`;
 
-      message = message.replace(link, html);
+      message = message.replace(matches[index], html);
     }
   }
 
