@@ -1,7 +1,7 @@
 body {
   color: #ccc;
   font-family: monospace;
-  padding-top: 60px;
+  padding-top: 110px;
 }
 
 .test-item {
@@ -71,7 +71,7 @@ li.failed .open {
   width: 100%;
   background: #1c1c1c;
   padding: 4px;
-  box-shadow: 0 2px 5px #cccccc36;
+  border-bottom: 1px solid #4b4b4b;
   z-index: 999;
 }
 
@@ -101,6 +101,49 @@ li.failed .open {
 
 .toolbar-btn-active {
   background: #fff6;
+}
+
+.toolbar-file {
+  position: fixed;
+  right: 0;
+  top: 38px;
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  width: 100%;
+  background: #2a2a2a;
+  padding: 8px 16px;
+  z-index: 998;
+  border-top: 1px solid #444;
+}
+
+.toolbar-file-btn {
+  background: #007acc;
+  color: #fff;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 13px;
+  font-family: monospace;
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+  font-weight: 500;
+}
+
+.toolbar-file-btn:hover {
+  background: #005a9e;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 6px rgba(0, 122, 204, 0.4);
+}
+
+.toolbar-file-btn:active {
+  background: #004578;
+  transform: translateY(0);
+  box-shadow: none;
 }
 
 .container-closed .closed.passed {
@@ -185,42 +228,4 @@ pre {
 
 .json-curly {
   color: #fb25cd; /* Color para las llaves */
-}
-
-/* Header del contenido colapsable */
-.content-header {
-  display: flex;
-  justify-content: flex-end;
-  padding: 8px 16px;
-  border-bottom: 1px solid #ccc3;
-  margin-bottom: 8px;
-}
-
-/* Botón "Go to method" */
-.goto-method-btn {
-  background: #007acc;
-  color: #fff;
-  border: none;
-  padding: 6px 12px;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 12px;
-  font-family: monospace;
-  transition: all 0.2s ease;
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  white-space: nowrap;
-}
-
-.goto-method-btn:hover {
-  background: #005a9e;
-  transform: translateY(-1px);
-  box-shadow: 0 2px 4px rgba(0, 122, 204, 0.3);
-}
-
-.goto-method-btn:active {
-  background: #004578;
-  transform: translateY(0);
-  box-shadow: none;
 }

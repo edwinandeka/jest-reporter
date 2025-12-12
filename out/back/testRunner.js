@@ -357,6 +357,7 @@ Contenido recibido: ${jsonString.substring(0, 200)}...`;
     }
     /**
      * Busca y abre un método en el archivo TypeScript basándose en el nombre de la prueba.
+     * Analiza el código de la prueba para encontrar llamadas a métodos y luego busca esos métodos en el archivo .ts
      * @param specPath - Ruta del archivo .spec.ts
      * @param tsPath - Ruta del archivo .ts correspondiente
      * @param testName - Nombre de la prueba (ej: "should create" o "HomeComponent should create")
@@ -364,49 +365,137 @@ Contenido recibido: ${jsonString.substring(0, 200)}...`;
      */
     findAndOpenMethod(specPath, tsPath, testName, workspacePath) {
         const { openFileAtPathAndLine } = require('./backend');
-        // Normalizar la ruta del archivo .ts
+        // Normalizar las rutas
+        specPath = specPath.replace(/\//gm, '\\');
         tsPath = tsPath.replace(/\//gm, '\\');
-        const isAbsolute = path.isAbsolute(tsPath);
-        const finalTsPath = isAbsolute ? tsPath : path.join(workspacePath, tsPath);
+        const isSpecAbsolute = path.isAbsolute(specPath);
+        const isTsAbsolute = path.isAbsolute(tsPath);
+        const finalSpecPath = isSpecAbsolute ? specPath : path.join(workspacePath, specPath);
+        const finalTsPath = isTsAbsolute ? tsPath : path.join(workspacePath, tsPath);
+        console.log('🔍 Analizando prueba en:', finalSpecPath);
         console.log('🔍 Buscando método en:', finalTsPath);
         console.log('📝 Nombre de la prueba:', testName);
-        // Verificar si el archivo existe
+        // Verificar si los archivos existen
+        if (!fs.existsSync(finalSpecPath)) {
+            vscode.window.showWarningMessage(`No se encontró el archivo de prueba: ${finalSpecPath}`);
+            return;
+        }
         if (!fs.existsSync(finalTsPath)) {
             vscode.window.showWarningMessage(`No se encontró el archivo: ${finalTsPath}`);
             return;
         }
-        // Leer el contenido del archivo TypeScript
-        const content = fs.readFileSync(finalTsPath, 'utf8');
-        const lines = content.split('\n');
-        // Extraer posibles nombres de métodos del nombre de la prueba
-        // Ej: "should create" -> buscar constructor, ngOnInit
-        // Ej: "should calculate total" -> buscar "calculateTotal"
-        const methodPatterns = this.extractMethodPatterns(testName);
-        // Buscar el método en el archivo
+        // 1. Leer el archivo de prueba y extraer los métodos llamados en el test específico
+        const specContent = fs.readFileSync(finalSpecPath, 'utf8');
+        const methodsCalledInTest = this.extractMethodCallsFromTest(specContent, testName);
+        console.log('📞 Métodos encontrados en la prueba:', methodsCalledInTest);
+        // 2. Leer el archivo TypeScript y crear un mapa de métodos con sus líneas
+        const tsContent = fs.readFileSync(finalTsPath, 'utf8');
+        const methodMap = this.buildMethodMap(tsContent);
+        console.log('📋 Métodos disponibles en el archivo:', Array.from(methodMap.keys()));
+        // 3. Buscar el primer método llamado en la prueba que exista en el archivo
         let foundLine = 0;
-        for (let i = 0; i < lines.length; i++) {
-            const line = lines[i];
-            // Buscar coincidencias con los patrones de método
+        let foundMethod = '';
+        for (const methodName of methodsCalledInTest) {
+            if (methodMap.has(methodName)) {
+                foundLine = methodMap.get(methodName);
+                foundMethod = methodName;
+                console.log(`✅ Encontrado método "${foundMethod}" en línea ${foundLine}`);
+                break;
+            }
+        }
+        // Si no se encontró ningún método de la prueba, intentar con patrones del nombre de la prueba
+        if (foundLine === 0) {
+            const methodPatterns = this.extractMethodPatterns(testName);
             for (const pattern of methodPatterns) {
-                // Buscar métodos: method() { o method(): type {
-                const methodRegex = new RegExp(`\\b${pattern}\\s*\\([^)]*\\)\\s*(?::\\s*[^{]+)?\\s*\\{`, 'i');
-                if (methodRegex.test(line)) {
-                    foundLine = i + 1;
-                    console.log(`✅ Encontrado método en línea ${foundLine}: ${line.trim()}`);
+                if (methodMap.has(pattern)) {
+                    foundLine = methodMap.get(pattern);
+                    foundMethod = pattern;
+                    console.log(`✅ Encontrado método "${foundMethod}" por patrón en línea ${foundLine}`);
                     break;
                 }
             }
-            if (foundLine > 0)
-                break;
         }
-        // Si no se encontró un método específico, abrir el archivo en la línea 1
+        // Si aún no se encontró, abrir en la línea 1
         if (foundLine === 0) {
             foundLine = 1;
             console.log('⚠️ No se encontró un método específico, abriendo archivo en línea 1');
-            vscode.window.showInformationMessage(`Abriendo ${path.basename(finalTsPath)} (no se encontró método específico)`);
+            vscode.window.showInformationMessage(`Opening ${path.basename(finalTsPath)} (no specific method found)`);
+        }
+        else {
+            vscode.window.showInformationMessage(`Opening ${path.basename(finalTsPath)} at method: ${foundMethod}`);
         }
         // Abrir el archivo en la línea encontrada
         openFileAtPathAndLine(finalTsPath, foundLine, workspacePath);
+    }
+    /**
+     * Extrae las llamadas a métodos dentro de un test específico en el archivo .spec.ts
+     * Busca patrones como: component.methodName(), fixture.methodName(), service.methodName()
+     * @param specContent - Contenido del archivo .spec.ts
+     * @param testName - Nombre de la prueba
+     * @returns Array de nombres de métodos llamados
+     */
+    extractMethodCallsFromTest(specContent, testName) {
+        const methods = [];
+        const lines = specContent.split('\n');
+        // Encontrar el bloque de la prueba específica
+        let inTargetTest = false;
+        let braceCount = 0;
+        let testStarted = false;
+        for (let i = 0; i < lines.length; i++) {
+            const line = lines[i];
+            // Buscar el inicio del test: it('testName', ...
+            if (line.includes(`it('${testName}'`) || line.includes(`it("${testName}"`) || line.includes(`it(\`${testName}\``)) {
+                inTargetTest = true;
+                testStarted = false;
+            }
+            if (inTargetTest) {
+                // Contar llaves para saber cuándo termina el test
+                const openBraces = (line.match(/\{/g) || []).length;
+                const closeBraces = (line.match(/\}/g) || []).length;
+                if (openBraces > 0)
+                    testStarted = true;
+                braceCount += openBraces - closeBraces;
+                // Extraer llamadas a métodos: component.method(), fixture.method(), etc.
+                // Patrón: (component|fixture|service|instance)\.(\w+)\(
+                const methodCallRegex = /(?:component|fixture|service|instance)\.(\w+)\(/g;
+                let match;
+                while ((match = methodCallRegex.exec(line)) !== null) {
+                    const methodName = match[1];
+                    if (!methods.includes(methodName)) {
+                        methods.push(methodName);
+                    }
+                }
+                // Si cerramos todas las llaves, terminamos el test
+                if (testStarted && braceCount === 0) {
+                    break;
+                }
+            }
+        }
+        return methods;
+    }
+    /**
+     * Construye un mapa de métodos y sus líneas en el archivo TypeScript
+     * @param tsContent - Contenido del archivo .ts
+     * @returns Map con nombre del método como clave y número de línea como valor
+     */
+    buildMethodMap(tsContent) {
+        const methodMap = new Map();
+        const lines = tsContent.split('\n');
+        for (let i = 0; i < lines.length; i++) {
+            const line = lines[i].trim();
+            // Buscar métodos: methodName() { o methodName(): type {
+            // También constructor
+            const methodRegex = /^(?:public|private|protected)?\s*(\w+)\s*\([^)]*\)\s*(?::\s*[^{]+)?\s*\{/;
+            const match = line.match(methodRegex);
+            if (match) {
+                const methodName = match[1];
+                if (!methodMap.has(methodName)) {
+                    methodMap.set(methodName, i + 1); // +1 porque las líneas empiezan en 1
+                    console.log(`📌 Método encontrado: ${methodName} en línea ${i + 1}`);
+                }
+            }
+        }
+        return methodMap;
     }
     /**
      * Extrae posibles patrones de nombre de método desde el nombre de una prueba.

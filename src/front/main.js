@@ -45,21 +45,33 @@ function openFile(link) {
 }
 
 /**
- * Navega al método en el archivo TypeScript relacionado con la prueba.
+ * Abre el archivo TypeScript relacionado con las pruebas actuales.
  * @param {string} specFilePath - Ruta del archivo .spec.ts
- * @param {string} testName - Nombre de la prueba (ej: "should create")
  */
-function goToMethod(specFilePath, testName) {
+function openTsFile(specFilePath) {
   // Convertir la ruta del archivo .spec.ts al archivo .ts correspondiente
   let tsFilePath = specFilePath.replace(/\.spec\.ts$/, '.ts');
 
-  console.log('🔍 Buscando método para:', testName, 'en archivo:', tsFilePath);
+  console.log('📂 Abriendo archivo:', tsFilePath);
 
   vscode.postMessage({
-    command: "goToMethod",
-    specPath: specFilePath,
-    tsPath: tsFilePath,
-    testName: testName,
+    command: "openFile",
+    path: tsFilePath,
+    line: 1,
+  });
+}
+
+/**
+ * Abre el archivo de prueba (spec.ts).
+ * @param {string} specFilePath - Ruta del archivo .spec.ts
+ */
+function openTestFile(specFilePath) {
+  console.log('🧪 Abriendo archivo de prueba:', specFilePath);
+
+  vscode.postMessage({
+    command: "openFile",
+    path: specFilePath,
+    line: 1,
   });
 }
 
@@ -231,11 +243,6 @@ function getJsonContent(json, relativePath, message) {
                             ${result.fullName}
                         </p>
                         <div class="content">
-                            <div class="content-header">
-                                <button class="goto-method-btn" onclick="goToMethod('${test.name}', '${result.fullName}')" title="Go to method in TypeScript file">
-                                  📍 Go to method
-                                </button>
-                            </div>
                             <pre>${replaceMessage(
                               result.failureMessages,
                               relativePath
@@ -288,6 +295,23 @@ function results(data) {
   document.querySelectorAll(".open").forEach((element) => {
     element.addEventListener("click", toggleResult);
   });
+
+  // Mostrar la barra de herramientas de archivo y configurar el botón
+  const toolbarFile = document.getElementById("toolbar-file");
+  const openFileBtn = document.getElementById("open-file-btn");
+
+  if (toolbarFile && openFileBtn) {
+    toolbarFile.classList.remove("hidden");
+
+    // Remover event listener anterior si existe
+    const newBtn = openFileBtn.cloneNode(true);
+    openFileBtn.parentNode.replaceChild(newBtn, openFileBtn);
+
+    // Agregar event listener al botón
+    newBtn.addEventListener("click", function() {
+      openTsFile(message.relativePath);
+    });
+  }
 }
 
 /**

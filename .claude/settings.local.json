@@ -3,7 +3,8 @@
     "allow": [
       "Bash(npm install:*)",
       "Bash(npm run compile:*)",
-      "Bash(npx vsce:*)"
+      "Bash(npx vsce:*)",
+      "Bash(dir:*)"
     ]
   }
 }
